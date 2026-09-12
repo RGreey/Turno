@@ -385,13 +385,16 @@ export function SettingsTabs({ business: initial, services: initServices, employ
     { value: 'GEL', label: '🇬🇪 GEL — Georgian Lari' },
     { value: 'BRL', label: '🇧🇷 BRL — Brazilian Real' },
     { value: 'MXN', label: '🇲🇽 MXN — Mexican Peso' },
+    { value: 'COP', label: '🇨🇴 COP — Colombian Peso' },
+    { value: 'PEN', label: '🇵🇪 PEN — Peruvian Sol' },
+    { value: 'CLP', label: '🇨🇱 CLP — Chilean Peso' },
+    { value: 'ARS', label: '🇦🇷 ARS — Argentine Peso' },
     { value: 'INR', label: '🇮🇳 INR — Indian Rupee' },
     { value: 'THB', label: '🇹🇭 THB — Thai Baht' },
     { value: 'JPY', label: '🇯🇵 JPY — Japanese Yen' },
     { value: 'CNY', label: '🇨🇳 CNY — Chinese Yuan' },
     { value: 'PLN', label: '🇵🇱 PLN — Polish Złoty' },
     { value: 'RON', label: '🇷🇴 RON — Romanian Leu' },
-    { value: 'ARS', label: '🇦🇷 ARS — Argentine Peso' },
     { value: 'other', label: '✏️ Other (enter manually)' },
   ]
 

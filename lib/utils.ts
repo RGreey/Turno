@@ -22,9 +22,11 @@ export function formatDate(date: string | Date): string {
   }).format(new Date(date))
 }
 
-export function uses12HourClock(locale: string): boolean {
-  const sample = new Intl.DateTimeFormat(locale, { hour: 'numeric' }).format(new Date(2000, 0, 1, 13))
-  return /am|pm/i.test(sample)
+export function uses12HourClock(_locale: string): boolean {
+  // Antes decidía 12h vs 24h según el idioma, y para español el estándar
+  // de Intl devuelve 24h por defecto. Se fuerza siempre a 12h (AM/PM)
+  // porque es el formato preferido en Colombia independientemente del idioma.
+  return true
 }
 
 export function formatTime(date: string | Date, locale = 'en-US'): string {

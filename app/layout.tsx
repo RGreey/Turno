@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import enMessages from '../messages/en.json'
+
 import './globals.css'
 
 // English fallback used only when the request-scoped next-intl config is
@@ -12,9 +13,9 @@ const FALLBACK_MESSAGES = enMessages as Awaited<ReturnType<typeof getMessages>>
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Pronto — Business Management for Service SMBs',
+  title: 'Turno — Manejo de citas y negocios',
   description:
-    'Self-hosted POS, CRM, Inventory & Omnichannel Notifications. Your data, your server. Zero commission. One command install.',
+    'Turno es un software de gestión de negocios y citas para pequeñas empresas, con POS, CRM, inventario, reservas y notificaciones por Telegram. Open source y autoalojado. Fork de Pronto.',
   keywords: [
     'open source POS',
     'self-hosted CRM',
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Pronto',
+    title: 'Turno',
   },
   formatDetection: {
     telephone: false,
