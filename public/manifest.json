@@ -1,7 +1,7 @@
 {
-  "name": "Pronto — Business Management",
-  "short_name": "Pronto",
-  "description": "POS · CRM · Inventory · Booking for service businesses",
+  "name": "Turno — Manejo de tu negocio",
+  "short_name": "Turno",
+  "description": "POS · CRM · Inventario · Reservas para negocios de servicios",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

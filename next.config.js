@@ -24,7 +24,7 @@ const withSerwist = require('@serwist/next').default({
   // reports the whole navigation as a network error, not just a missed
   // cache — offline hard-reloads fail outright instead of showing the
   // fallback page.
-  additionalPrecacheEntries: ['/offline'],
+  additionalPrecacheEntries: [{ url: '/offline', revision: '1' }],
   // Disable in development to avoid confusing caching during dev, and
   // because @serwist/next's webpack plugin doesn't support Turbopack
   // (this repo's `next dev` uses --turbopack).

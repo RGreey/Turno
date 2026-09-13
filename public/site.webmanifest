@@ -1,7 +1,7 @@
 {
-  "name": "Pronto",
-  "short_name": "Pronto",
-  "description": "Free open-source POS, CRM & booking for service businesses",
+  "name": "Turno",
+  "short_name": "Turno",
+  "description": "Maneja tu negocio de manera fácil y rápida con Turno, la plataforma de gestión de reservas y ventas para negocios de servicios.",
   "icons": [
     { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
