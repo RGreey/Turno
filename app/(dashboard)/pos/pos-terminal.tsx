@@ -218,8 +218,8 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
   // ─── Cart helpers ─────────────────────────────────────────────────────────
   const addToCart = (service: Service) => {
     setCart((prev) => {
-      const existing = prev.find((i) => i.service.id === service.id)
-      if (existing) return prev.map((i) => i.service.id === service.id ? { ...i, qty: i.qty + 1 } : i)
+      const existing = prev.find((i) => i.service?.id === service.id)
+      if (existing) return prev.map((i) => i.service?.id === service.id ? { ...i, qty: i.qty + 1 } : i)
       return [...prev, { service, qty: 1 }]
     })
   }
@@ -256,7 +256,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
   async function checkout() {
     if (cart.length === 0) return
     setLoading(true)
-    const items = cart.map((i) => ({
+    const items: { service_id?: string; item_id?: string; name: string; price: number; qty: number }[] = cart.map((i) => ({
       ...(i.service ? { service_id: i.service.id } : { item_id: i.product!.id }),
       name: i.service?.name ?? i.product!.name,
       price: i.service?.price ?? i.product!.price,
