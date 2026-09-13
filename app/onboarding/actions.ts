@@ -2,10 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import DOMPurify from 'isomorphic-dompurify'
 
 function sanitize(s: string): string {
-  return DOMPurify.sanitize(s, { ALLOWED_TAGS: [] }).trim()
+  // Quita cualquier etiqueta HTML (ej. <script>, <b>, etc.) dejando solo texto plano.
+  return s.replace(/<[^>]*>/g, '').trim()
 }
 
 export async function completeOnboarding(data: {
