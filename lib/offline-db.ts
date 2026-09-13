@@ -10,7 +10,7 @@
  */
 
 const DB_NAME = 'pronto-offline'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ export interface PendingTransaction {
   employee_id: string | null
   amount: number
   payment_method: string
-  items: Array<{ service_id: string; name: string; price: number; qty: number }>
+  items: Array<{ service_id?: string; item_id?: string; name: string; price: number; qty: number }>
   /** ISO timestamp — generated locally */
   created_at: string
   /** false until successfully synced to Supabase */
@@ -50,6 +50,15 @@ export interface CachedClient {
   phone: string | null
 }
 
+export interface CachedProduct {
+  id: string
+  name: string
+  price: number
+  stock: number
+  unit: string
+  category: string | null
+}
+
 // ─── Open DB ─────────────────────────────────────────────────────────────────
 
 function openDB(): Promise<IDBDatabase> {
@@ -74,6 +83,9 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains('clients_cache')) {
         db.createObjectStore('clients_cache', { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains('products_cache')) {
+        db.createObjectStore('products_cache', { keyPath: 'id' })
       }
     }
 
@@ -157,7 +169,7 @@ export async function getPendingCount(): Promise<number> {
 
 // ─── Cache helpers ────────────────────────────────────────────────────────────
 
-type CacheStore = 'services_cache' | 'employees_cache' | 'clients_cache'
+type CacheStore = 'services_cache' | 'employees_cache' | 'clients_cache' | 'products_cache'
 
 /** Replace all records in a cache store. */
 export async function cacheData<T extends { id: string }>(

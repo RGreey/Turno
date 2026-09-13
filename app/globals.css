@@ -38,25 +38,25 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 228 35% 7%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 228 30% 11%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 228 30% 11%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --primary: 252 82% 70%;
+    --primary-foreground: 228 35% 7%;
+    --secondary: 235 25% 18%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 235 25% 18%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 252 28% 22%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --border: 235 24% 22%;
+    --input: 235 24% 22%;
+    --ring: 252 82% 70%;
   }
 }
 
@@ -67,4 +67,31 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@layer utilities {
+  .dark .bg-white { background-color: hsl(var(--card)); }
+  .dark .bg-gray-50 { background-color: hsl(var(--background)); }
+  .dark .bg-gray-100 { background-color: hsl(var(--secondary)); }
+  .dark .bg-gray-200 { background-color: hsl(var(--border)); }
+  .dark .bg-blue-50 { background-color: hsl(252 28% 18%); }
+  .dark .bg-green-50 { background-color: hsl(150 25% 14%); }
+  .dark .border-gray-200,
+  .dark .border-gray-300 { border-color: hsl(var(--border)); }
+  .dark .border-gray-100 { border-color: hsl(252 30% 28%); }
+  .dark .calendar-grid th,
+  .dark .calendar-grid td { border-color: hsl(252 30% 28%); }
+  .dark .text-gray-900,
+  .dark .text-gray-800,
+  .dark .text-gray-700 { color: hsl(var(--foreground)); }
+  .dark .text-gray-600,
+  .dark .text-gray-500 { color: hsl(var(--muted-foreground)); }
+  .dark .text-gray-400 { color: hsl(215 20% 58%); }
+  .dark .text-blue-600,
+  .dark .text-blue-700 { color: hsl(252 82% 76%); }
+  .dark .hover\:bg-gray-50:hover { background-color: hsl(var(--secondary)); }
+  .dark .hover\:bg-gray-100:hover { background-color: hsl(var(--accent)); }
+  .dark input,
+  .dark textarea,
+  .dark select { color-scheme: dark; }
 }

@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ShoppingCart, Users, Package, CalendarDays, Settings, LogOut, Menu, X } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, Users, Package, CalendarDays, Settings, LogOut, Menu, X, Moon, Sun } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { LangSwitcher } from './lang-switcher'
+import { useTheme } from '@/components/theme-provider'
 
 interface SidebarProps {
   businessName: string
@@ -20,6 +21,7 @@ export function Sidebar({ businessName }: SidebarProps) {
   const router = useRouter()
   const supabase = createClient()
   const [open, setOpen] = useState(false)
+  const { theme, toggleTheme } = useTheme()
 
   const nav = [
     { href: '/dashboard', label: t('dashboard'), icon: LayoutDashboard },
@@ -66,6 +68,16 @@ export function Sidebar({ businessName }: SidebarProps) {
       </nav>
       <div className="p-3 border-t border-white/10 space-y-0.5">
         <LangSwitcher />
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white/[0.55] hover:text-white/80 transition-colors"
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.08)' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = '' }}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4 shrink-0" /> : <Moon className="w-4 h-4 shrink-0" />}
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        </button>
         <Link href="/settings" onClick={() => setOpen(false)} className={cn(
           'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
           pathname.startsWith('/settings')
@@ -143,7 +155,7 @@ export function Sidebar({ businessName }: SidebarProps) {
       )} style={{ backgroundColor: '#0d1b2e' }}>
         <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between">
           <div>
-            <div className="font-bold text-lg" style={{ color: '#fff' }}>Pronto<span style={{ color: '#16a34a' }}>.</span></div>
+            <div className="font-bold text-lg" style={{ color: '#fff' }}>Turno<span style={{ color: '#16a34a' }}>.</span></div>
             <div className="text-xs text-white/40 truncate mt-0.5">{businessName}</div>
           </div>
           <button

@@ -97,12 +97,12 @@ export default async function DashboardPage() {
     .map((s) => `${statusBreakdown[s]} ${s}`)
 
   const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-700',
-    confirmed: 'bg-blue-100 text-blue-700',
-    completed: 'bg-amber-100 text-amber-700',
-    paid: 'bg-green-100 text-green-700',
-    cancelled: 'bg-red-100 text-red-700',
-    no_show: 'bg-gray-100 text-gray-600',
+    pending: 'bg-amber-600 text-white',
+    confirmed: 'bg-indigo-600 text-white',
+    completed: 'bg-sky-600 text-white',
+    paid: 'bg-emerald-600 text-white',
+    cancelled: 'bg-rose-600 text-white',
+    no_show: 'bg-slate-600 text-white',
   }
 
   return (

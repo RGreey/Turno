@@ -53,6 +53,13 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   return `${String(h).padStart(2, '0')}:${m}`
 })
 
+function formatTime12(time: string): string {
+  const [hour, minute] = time.split(':').map(Number)
+  const period = hour >= 12 ? 'PM' : 'AM'
+  const displayHour = hour % 12 || 12
+  return `${displayHour}:${String(minute).padStart(2, '0')} ${period}`
+}
+
 interface Props { business: Business & { telegram_chat_id?: string | null; viber_chat_id?: string | null }; services: Service[]; employees: Employee[]; workingHours: DayHours[]; userEmail: string }
 type Tab = 'general' | 'services' | 'employees' | 'notifications' | 'billing' | 'account' | 'modules'
 
@@ -657,7 +664,7 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                         onChange={(e) => updateDay(dow, { open_time: e.target.value })}
                         className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                        {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{formatTime12(opt)}</option>)}
                       </select>
                       <span className="text-xs text-gray-400">{t('workingHours.to')}</span>
                       <select
@@ -665,7 +672,7 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                         onChange={(e) => updateDay(dow, { close_time: e.target.value })}
                         className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                        {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{formatTime12(opt)}</option>)}
                       </select>
                     </div>
                   ) : (
@@ -696,7 +703,7 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                             onChange={(e) => updateDay(dow, { break_start: e.target.value })}
                             className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                            {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{formatTime12(opt)}</option>)}
                           </select>
                           <span className="text-xs text-gray-400">{t('workingHours.to')}</span>
                           <select
@@ -704,7 +711,7 @@ export function SettingsTabs({ business: initial, services: initServices, employ
                             onChange={(e) => updateDay(dow, { break_end: e.target.value })}
                             className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                            {TIME_OPTIONS.map((opt) => <option key={opt} value={opt}>{formatTime12(opt)}</option>)}
                           </select>
                         </div>
                       )}

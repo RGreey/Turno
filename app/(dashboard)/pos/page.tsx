@@ -25,12 +25,19 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
 
   if (!business) redirect('/onboarding')
 
-  const [{ data: services }, { data: employees }, { data: clients }] = await Promise.all([
+  const [{ data: services }, { data: products }, { data: employees }, { data: clients }] = await Promise.all([
     supabase
       .from('services')
       .select('id, name, price, duration_min, category')
       .eq('business_id', business.id)
       .eq('is_active', true)
+      .order('name'),
+    supabase
+      .from('inventory_items')
+      .select('id, name, sell_price, quantity, unit, category')
+      .eq('business_id', business.id)
+      .gt('quantity', 0)
+      .not('sell_price', 'is', null)
       .order('name'),
     supabase
       .from('employees')
@@ -93,6 +100,14 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
         businessId={business.id}
         currency={business.currency}
         services={services ?? []}
+        products={(products ?? []).map((product) => ({
+          id: product.id,
+          name: product.name,
+          price: product.sell_price ?? 0,
+          stock: product.quantity,
+          unit: product.unit,
+          category: product.category,
+        }))}
         employees={employees ?? []}
         clients={clients ?? []}
         bookingContext={bookingContext}

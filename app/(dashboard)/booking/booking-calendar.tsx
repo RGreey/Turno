@@ -6,9 +6,10 @@ import { triggerBookingConfirmation } from './actions'
 import { formatInBusinessTimezone, uses12HourClock } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
-import { ChevronLeft, ChevronRight, ExternalLink, CreditCard, Palette } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, CreditCard, Palette, Moon, Sun } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
+import { useTheme } from '@/components/theme-provider'
 import {
   DndContext,
   DragEndEvent,
@@ -53,15 +54,15 @@ function wallclockToUtc(year: number, month: number, day: number, hour: number, 
 }
 
 const EMPLOYEE_PALETTE = [
-  { bg: '#bbf7d0', text: '#14532d' },
-  { bg: '#bae6fd', text: '#0c4a6e' },
-  { bg: '#ddd6fe', text: '#3b0764' },
-  { bg: '#fecdd3', text: '#881337' },
-  { bg: '#fde68a', text: '#713f12' },
-  { bg: '#99f6e4', text: '#134e4a' },
+  { bg: '#312e81', text: '#eef2ff' },
+  { bg: '#164e63', text: '#cffafe' },
+  { bg: '#4c1d95', text: '#f3e8ff' },
+  { bg: '#831843', text: '#fce7f3' },
+  { bg: '#713f12', text: '#fef3c7' },
+  { bg: '#115e59', text: '#ccfbf1' },
 ]
 
-const NO_EMPLOYEE_COLOR = { bg: '#f1f5f9', text: '#475569' }
+const NO_EMPLOYEE_COLOR = { bg: '#334155', text: '#e2e8f0' }
 
 function getEmployeeColor(employeeId: string | null | undefined) {
   if (!employeeId) return NO_EMPLOYEE_COLOR
@@ -86,11 +87,25 @@ function getStatusStripe(status: string): string {
 }
 
 const SOURCE_BADGE: Record<string, { label: string; pill: string }> = {
-  online:   { label: 'Online',   pill: 'bg-blue-100 text-blue-700' },
-  manual:   { label: 'Manual',   pill: 'bg-gray-100 text-gray-500' },
-  telegram: { label: 'Telegram', pill: 'bg-sky-100 text-sky-700' },
-  viber:    { label: 'Viber',    pill: 'bg-purple-100 text-purple-700' },
+  online:   { label: 'Online',   pill: 'bg-blue-700 text-white' },
+  manual:   { label: 'Manual',   pill: 'bg-slate-700 text-slate-100' },
+  telegram: { label: 'Telegram', pill: 'bg-cyan-700 text-white' },
+  viber:    { label: 'Viber',    pill: 'bg-purple-700 text-white' },
 }
+
+const STATUS_CARD_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  pending: { bg: '#fef3c7', text: '#78350f', border: '#f59e0b' },
+  confirmed: { bg: '#e0e7ff', text: '#312e81', border: '#6366f1' },
+  completed: { bg: '#bae6fd', text: '#0c4a6e', border: '#0284c7' },
+  paid: { bg: '#bbf7d0', text: '#14532d', border: '#16a34a' },
+  cancelled: { bg: '#e2e8f0', text: '#334155', border: '#64748b' },
+  no_show: { bg: '#fecdd3', text: '#881337', border: '#e11d48' },
+}
+
+function getStatusCardColor(status: string) {
+  return STATUS_CARD_COLORS[status.toLowerCase()] ?? STATUS_CARD_COLORS.pending
+}
+
 interface Employee { id: string; name: string }
 interface Service { id: string; name: string; duration_min: number; price: number }
 interface Client { id: string; name: string; phone: string | null }
@@ -137,12 +152,12 @@ function DroppableCell({
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 border-yellow-300 text-yellow-800',
-  confirmed: 'bg-blue-100 border-blue-300 text-blue-800',
-  completed: 'bg-amber-100 border-amber-300 text-amber-800',
-  paid: 'bg-green-100 border-green-300 text-green-800',
-  cancelled: 'bg-gray-100 border-gray-300 text-gray-500',
-  no_show: 'bg-red-50 border-red-200 text-red-600',
+  pending: 'bg-amber-600 border-amber-500 text-white',
+  confirmed: 'bg-indigo-600 border-indigo-500 text-white',
+  completed: 'bg-sky-600 border-sky-500 text-white',
+  paid: 'bg-emerald-600 border-emerald-500 text-white',
+  cancelled: 'bg-slate-600 border-slate-500 text-white',
+  no_show: 'bg-rose-600 border-rose-500 text-white',
 }
 
 function getMonday(date: Date) {
@@ -157,6 +172,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('booking')
+  const { theme, toggleTheme } = useTheme()
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()))
   const [origin, setOrigin] = useState('')
   useEffect(() => { setOrigin(window.location.origin) }, [])
@@ -194,7 +210,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   const is12h = uses12HourClock(locale)
 
   // hour/minute always stored in 24h internally; period only used when is12h
-  const [form, setForm] = useState({ client_id: '', employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM' as 'AM' | 'PM', notes: '' })
+  const [form, setForm] = useState({ client_id: '', employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM' as 'AM' | 'PM', status: 'pending', notes: '' })
 
   async function openForm(prefill?: Partial<typeof form>) {
     const { data } = await supabase
@@ -363,16 +379,18 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     const { data, error } = await supabase.from('appointments').insert({
       business_id: businessId, client_id: form.client_id || null, employee_id: form.employee_id || null,
       service_id: form.service_id, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(),
-      notes: form.notes ? form.notes.trim() || null : null, price: service.price, status: 'confirmed', source: 'manual',
+      notes: form.notes ? form.notes.trim() || null : null, price: service.price, status: form.status, source: 'manual',
     }).select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)').single()
 
     if (!error && data) {
       setAppointments((prev) => [...prev, data as Appointment])
       setShowForm(false)
       setFormError(null)
-      setForm({ client_id: '', employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM', notes: '' })
+      setForm({ client_id: '', employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM', status: 'pending', notes: '' })
       router.refresh()
-      triggerBookingConfirmation(data.id).catch(() => {/* non-critical */})
+      if (form.status === 'confirmed') {
+        triggerBookingConfirmation(data.id).catch(() => {/* non-critical */})
+      }
     } else if (error) {
       if (error.message?.includes('no_staff_available')) {
         setFormError('No active staff available to take this booking. Add an employee in Settings, or select a specific employee.')
@@ -386,10 +404,14 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   }
 
   async function updateStatus(id: string, status: string) {
+    const previousStatus = appointments.find((a) => a.id === id)?.status
     await supabase.from('appointments').update({ status }).eq('id', id)
     setAppointments((prev) => prev.map((a) => a.id === id ? { ...a, status } : a))
     setSelectedAppt((a) => a?.id === id ? { ...a, status } : a)
     router.refresh()
+    if (status === 'confirmed' && previousStatus !== 'confirmed') {
+      triggerBookingConfirmation(id).catch(() => {/* non-critical */})
+    }
   }
 
   async function deleteAppointment(id: string) {
@@ -504,13 +526,21 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
               </div>
             )}
           </div>
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+            title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
           <Button size="sm" onClick={() => openForm()}>{t('newAppointment')}</Button>
         </div>
       </div>
 
       {/* Calendar grid */}
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="bg-white rounded-xl border border-gray-200 overflow-auto flex-1">
+        <div className="calendar-grid bg-white rounded-xl border border-gray-200 overflow-auto flex-1">
           <table className="w-full text-xs border-collapse min-w-[700px]">
             <thead>
               <tr>
@@ -549,14 +579,14 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                         }}
                       >
                         {cellAppts.map((a) => {
-                          const empColor = getEmployeeColor(a.employees?.id)
+                          const statusColor = getStatusCardColor(a.status)
                           const stripe = getStatusStripe(a.status)
                           return (
                             <DraggableAppt key={a.id} id={a.id}>
                               <div
                                 onClick={(e) => { e.stopPropagation(); setSelectedAppt(a) }}
                                 className="rounded px-1 py-0.5 mb-0.5 cursor-grab active:cursor-grabbing text-xs"
-                                style={{ backgroundColor: empColor.bg, color: empColor.text, borderLeft: `5px solid ${stripe}`, borderTop: '1px solid rgba(0,0,0,0.08)', borderRight: '1px solid rgba(0,0,0,0.08)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}
+                                style={{ backgroundColor: statusColor.bg, color: statusColor.text, borderLeft: `5px solid ${stripe}`, borderTop: `1px solid ${statusColor.border}`, borderRight: `1px solid ${statusColor.border}`, borderBottom: `1px solid ${statusColor.border}` }}
                               >
                                 <div className="font-semibold truncate">{a.clients?.name ?? (a.source === 'online' ? 'Online' : t('walkIn'))}</div>
                                 <div className="truncate">{a.services?.name} · {formatInBusinessTimezone(a.starts_at, timezone, 'time')}</div>
@@ -584,11 +614,11 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
         {/* Drag overlay — shown while dragging */}
         <DragOverlay>
           {draggedAppt && (() => {
-            const empColor = getEmployeeColor(draggedAppt.employees?.id)
+            const statusColor = getStatusCardColor(draggedAppt.status)
             const stripe = getStatusStripe(draggedAppt.status)
             return (
               <div className="rounded px-2 py-1 text-xs shadow-lg w-28"
-                style={{ backgroundColor: empColor.bg, color: empColor.text, borderLeft: `5px solid ${stripe}`, borderTop: '1px solid rgba(0,0,0,0.08)', borderRight: '1px solid rgba(0,0,0,0.08)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                style={{ backgroundColor: statusColor.bg, color: statusColor.text, borderLeft: `5px solid ${stripe}`, borderTop: `1px solid ${statusColor.border}`, borderRight: `1px solid ${statusColor.border}`, borderBottom: `1px solid ${statusColor.border}` }}>
                 <div className="font-semibold truncate">{draggedAppt.clients?.name ?? (draggedAppt.source === 'online' ? 'Online' : t('walkIn'))}</div>
                 <div className="truncate">{draggedAppt.services?.name}</div>
                 {draggedAppt.employees?.name && (
@@ -696,6 +726,18 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                   </select>
                 </div>
               )}
+              <div>
+                <label className="text-xs text-gray-500 font-medium">Appointment status</label>
+                <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="completed">Completed</option>
+                  <option value="paid">Paid</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="no_show">No show</option>
+                </select>
+              </div>
               <div>
                 <label className="text-xs text-gray-500 font-medium">{t('form.notesLabel')}</label>
                 <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}

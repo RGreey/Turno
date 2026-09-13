@@ -28,12 +28,14 @@ import {
   type CachedService,
   type CachedEmployee,
   type CachedClient,
+    type CachedProduct,
 } from '@/lib/offline-db'
 
 interface Service { id: string; name: string; price: number; duration_min: number; category: string | null }
+interface Product { id: string; name: string; price: number; stock: number; unit: string; category: string | null }
 interface Employee { id: string; name: string }
 interface Client { id: string; name: string; phone: string | null }
-interface CartItem { service: Service; qty: number }
+interface CartItem { service?: Service; product?: Product; qty: number }
 type PaymentMethod = 'cash' | 'card' | 'transfer'
 
 interface BookingContext {
@@ -48,12 +50,13 @@ interface POSTerminalProps {
   businessId: string
   currency: string
   services: Service[]
+  products: Product[]
   employees: Employee[]
   clients: Client[]
   bookingContext?: BookingContext
 }
 
-export function POSTerminal({ businessId, currency, services: initialServices, employees: initialEmployees, clients: initialClients, bookingContext }: POSTerminalProps) {
+export function POSTerminal({ businessId, currency, services: initialServices, products: initialProducts, employees: initialEmployees, clients: initialClients, bookingContext }: POSTerminalProps) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('pos')
@@ -87,6 +90,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
 
   // Active data — switches between server-loaded props and IndexedDB cache
   const [activeServices, setActiveServices] = useState<Service[]>(initialServices)
+  const [activeProducts, setActiveProducts] = useState<Product[]>(initialProducts)
   const [activeEmployees, setActiveEmployees] = useState<Employee[]>(initialEmployees)
   const [activeClients, setActiveClients] = useState<Client[]>(initialClients)
 
@@ -116,7 +120,10 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
     if (initialClients.length) {
       cacheData<CachedClient>('clients_cache', initialClients).catch(() => {})
     }
-  }, [initialServices, initialEmployees, initialClients])
+    if (initialProducts.length) {
+      cacheData<CachedProduct>('products_cache', initialProducts).catch(() => {})
+    }
+  }, [initialServices, initialEmployees, initialClients, initialProducts])
 
   // ─── On mount: prefill from booking context ──────────────────────────────
   useEffect(() => {
@@ -152,6 +159,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
       getCachedData<Service>('services_cache').then((s) => { if (s.length) setActiveServices(s) }).catch(() => {})
       getCachedData<Employee>('employees_cache').then((e) => { if (e.length) setActiveEmployees(e) }).catch(() => {})
       getCachedData<Client>('clients_cache').then((c) => { if (c.length) setActiveClients(c) }).catch(() => {})
+      getCachedData<Product>('products_cache').then((p) => { if (p.length) setActiveProducts(p) }).catch(() => {})
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline])
@@ -173,6 +181,22 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
           items: tx.items,
         })
         if (!error) {
+          for (const item of tx.items) {
+            if (!item.item_id) continue
+            const { data: product } = await supabase
+              .from('inventory_items')
+              .select('quantity')
+              .eq('id', item.item_id)
+              .eq('business_id', businessId)
+              .maybeSingle()
+            if (product) {
+              await supabase
+                .from('inventory_items')
+                .update({ quantity: Math.max(0, product.quantity - item.qty) })
+                .eq('id', item.item_id)
+                .eq('business_id', businessId)
+            }
+          }
           await markTransactionSynced(tx.id)
         }
       }
@@ -200,24 +224,42 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
     })
   }
 
+  const addProductToCart = (product: Product) => {
+    setCart((prev) => {
+      const existing = prev.find((item) => item.product?.id === product.id)
+      if (existing) {
+        if (existing.qty >= product.stock) return prev
+        return prev.map((item) => item.product?.id === product.id ? { ...item, qty: item.qty + 1 } : item)
+      }
+      return [...prev, { product, qty: 1 }]
+    })
+  }
+
   const updateQty = (serviceId: string, delta: number) => {
     setCart((prev) =>
-      prev.map((i) => i.service.id === serviceId ? { ...i, qty: i.qty + delta } : i).filter((i) => i.qty > 0)
+      prev.map((i) => {
+        const id = i.service?.id ?? i.product?.id
+        const max = i.product?.stock
+        if (id !== serviceId) return i
+        const nextQty = i.qty + delta
+        return { ...i, qty: max == null ? nextQty : Math.min(nextQty, max) }
+      }).filter((i) => i.qty > 0)
     )
   }
 
-  const subtotal = cart.reduce((sum, i) => sum + i.service.price * i.qty, 0)
+  const subtotal = cart.reduce((sum, i) => sum + (i.service?.price ?? i.product?.price ?? 0) * i.qty, 0)
   const total = Math.max(0, subtotal - discount)
   const categories = Array.from(new Set(activeServices.map((s) => s.category ?? 'Other')))
+  const productCategories = Array.from(new Set(activeProducts.map((p) => p.category ?? 'Other')))
 
   // ─── Checkout ─────────────────────────────────────────────────────────────
   async function checkout() {
     if (cart.length === 0) return
     setLoading(true)
     const items = cart.map((i) => ({
-      service_id: i.service.id,
-      name: i.service.name,
-      price: i.service.price,
+      ...(i.service ? { service_id: i.service.id } : { item_id: i.product!.id }),
+      name: i.service?.name ?? i.product!.name,
+      price: i.service?.price ?? i.product!.price,
       qty: i.qty,
     }))
 
@@ -252,6 +294,18 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
           .single()
 
         if (error) throw error
+
+        for (const item of items) {
+          if (!item.item_id) continue
+          const product = activeProducts.find((p) => p.id === item.item_id)
+          if (!product || item.qty > product.stock) throw new Error(`Insufficient stock for ${item.name}`)
+          const { error: stockError } = await supabase
+            .from('inventory_items')
+            .update({ quantity: product.stock - item.qty })
+            .eq('id', item.item_id)
+            .eq('business_id', businessId)
+          if (stockError) throw stockError
+        }
         setReceiptNumber(data.receipt_number ?? '')
         router.refresh()
 
@@ -479,7 +533,21 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
                 </div>
               </div>
             ))}
-            {activeServices.length === 0 && (
+            {productCategories.map((cat) => (
+              <div key={`products-${cat}`}>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Products · {cat}</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {activeProducts.filter((p) => (p.category ?? 'Other') === cat).map((p) => (
+                    <button key={p.id} onClick={() => addProductToCart(p)} className="text-left p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-400 hover:shadow-sm transition-all">
+                      <div className="font-medium text-gray-900 text-sm mb-1">{p.name}</div>
+                      <div className="text-purple-600 font-semibold">{formatCurrency(p.price, currency)}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">Stock: {p.stock} {p.unit}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {activeServices.length === 0 && activeProducts.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 {t('noServices')}{' '}
                 <a href="/settings?tab=services" className="text-blue-600 hover:underline">
@@ -536,21 +604,21 @@ export function POSTerminal({ businessId, currency, services: initialServices, e
               <div className="text-center text-sm text-gray-400 py-6">{t('emptyCart')}</div>
             ) : (
               cart.map((item) => (
-                <div key={item.service.id} className="flex items-center gap-2">
+                <div key={item.service?.id ?? item.product?.id} className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">{item.service.name}</div>
-                    <div className="text-xs text-gray-500">{formatCurrency(item.service.price, currency)}</div>
+                    <div className="text-sm font-medium text-gray-900 truncate">{item.service?.name ?? item.product?.name}</div>
+                    <div className="text-xs text-gray-500">{formatCurrency(item.service?.price ?? item.product?.price ?? 0, currency)}</div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => updateQty(item.service.id, -1)} className="p-1 rounded hover:bg-gray-100">
+                    <button onClick={() => updateQty(item.service?.id ?? item.product!.id, -1)} className="p-1 rounded hover:bg-gray-100">
                       <Minus className="w-3 h-3" />
                     </button>
                     <span className="w-6 text-center text-sm font-medium">{item.qty}</span>
-                    <button onClick={() => updateQty(item.service.id, 1)} className="p-1 rounded hover:bg-gray-100">
+                    <button onClick={() => updateQty(item.service?.id ?? item.product!.id, 1)} className="p-1 rounded hover:bg-gray-100">
                       <Plus className="w-3 h-3" />
                     </button>
                     <button
-                      onClick={() => setCart((c) => c.filter((i) => i.service.id !== item.service.id))}
+                      onClick={() => setCart((c) => c.filter((i) => (i.service?.id ?? i.product?.id) !== (item.service?.id ?? item.product?.id)))}
                       className="p-1 rounded hover:bg-red-50 text-red-400"
                     >
                       <Trash2 className="w-3 h-3" />
