@@ -19,6 +19,29 @@ function toTitleCase(name: string): string {
   return name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+function businessDayBounds(timezone: string): { start: string; end: string } {
+  const now = new Date()
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: 'numeric', day: 'numeric',
+  }).formatToParts(now)
+  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value)
+  const year = get('year')
+  const month = get('month')
+  const day = get('day')
+  const noonUtc = new Date(Date.UTC(year, month - 1, day, 12))
+  const localNoon = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: false,
+  }).formatToParts(noonUtc)
+  const local = (type: string) => Number(localNoon.find((part) => part.type === type)?.value)
+  const offset = Date.UTC(local('year'), local('month') - 1, local('day'), local('hour') % 24, local('minute'), local('second')) - noonUtc.getTime()
+  const start = new Date(Date.UTC(year, month - 1, day) - offset)
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1)
+  return { start: start.toISOString(), end: end.toISOString() }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const businessId = req.nextUrl.searchParams.get('bid')
@@ -36,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     const { data: biz } = await supabase
       .from('businesses')
-      .select('id, name, telegram_bot_token, telegram_chat_id')
+      .select('id, name, timezone, telegram_bot_token, telegram_chat_id')
       .eq('id', businessId)
       .single()
 
@@ -84,19 +107,19 @@ export async function POST(req: NextRequest) {
               biz.telegram_bot_token,
               chatId,
               [
-                `✅ Hi ${toTitleCase(client.name)}!`,
+                `✅ ¡Hola ${toTitleCase(client.name)}!`,
                 ``,
-                `You're now connected to <b>${biz.name}</b>.`,
-                `You'll receive appointment reminders here automatically.`,
+                `Ya estás conectado con <b>${biz.name}</b>.`,
+                `Recibirás aquí los recordatorios de tus citas automáticamente.`,
                 ``,
-                `See you soon! 👋`,
+                `¡Nos vemos pronto! 👋`,
               ].join('\n')
             )
           } else {
             await sendTelegramMessage(
               biz.telegram_bot_token,
               chatId,
-              `❌ Link not found. Please use the link from your booking confirmation.`
+              `❌ No se encontró el enlace. Usa el enlace de tu confirmación de reserva.`
             )
           }
           return NextResponse.json({ ok: true })
@@ -113,17 +136,17 @@ export async function POST(req: NextRequest) {
         biz.telegram_bot_token,
         chatId,
         [
-          `👋 Hi ${firstName}!`,
+          `👋 ¡Hola ${firstName}!`,
           ``,
-          `You are now connected to <b>${biz.name}</b> on Pronto.`,
+          `Ya estás conectado con <b>${biz.name}</b> en Turno.`,
           ``,
-          `You'll receive notifications here:`,
-          `• 📅 New bookings`,
-          `• 🔔 Appointment reminders`,
-          `• ⚠️ Low-stock alerts`,
-          `• ✅ Visit completions`,
+          `Recibirás aquí estas notificaciones:`,
+          `• 📅 Nuevas reservas`,
+          `• 🔔 Recordatorios de citas`,
+          `• ⚠️ Alertas de stock bajo`,
+          `• ✅ Citas completadas`,
           ``,
-          `Send /help to see available commands.`,
+          `Envía /help para ver los comandos disponibles.`,
         ].join('\n')
       )
 
@@ -137,7 +160,7 @@ export async function POST(req: NextRequest) {
         await sendTelegramMessage(
           biz.telegram_bot_token,
           chatId,
-          `Please include your phone number.\nExample: /link +79001234567`
+          `Incluye tu número de teléfono.\nEjemplo: /link +573001234567`
         )
         return NextResponse.json({ ok: true })
       }
@@ -159,13 +182,13 @@ export async function POST(req: NextRequest) {
         await sendTelegramMessage(
           biz.telegram_bot_token,
           chatId,
-          `✅ Hi ${toTitleCase(clients[0].name)}! Your Telegram is linked. You'll receive appointment reminders here.`
+          `✅ ¡Hola ${toTitleCase(clients[0].name)}! Tu Telegram está vinculado. Recibirás aquí los recordatorios de tus citas.`
         )
       } else {
         await sendTelegramMessage(
           biz.telegram_bot_token,
           chatId,
-          `❌ Phone number not found. Make sure it matches the number you used when booking.`
+          `❌ No se encontró el número de teléfono. Comprueba que coincida con el que usaste al reservar.`
         )
       }
       return NextResponse.json({ ok: true })
@@ -173,9 +196,8 @@ export async function POST(req: NextRequest) {
 
     // ── /today — appointments today (owner only) ───────────────────────────────
     if (text.startsWith('/today')) {
-      const today = new Date()
-      const start = new Date(today.setHours(0, 0, 0, 0)).toISOString()
-      const end = new Date(today.setHours(23, 59, 59, 999)).toISOString()
+      const timezone = biz.timezone ?? 'UTC'
+      const { start, end } = businessDayBounds(timezone)
 
       const { data: appts } = await supabase
         .from('appointments')
@@ -186,13 +208,13 @@ export async function POST(req: NextRequest) {
         .order('starts_at')
 
       if (!appts || appts.length === 0) {
-        await sendTelegramMessage(biz.telegram_bot_token, chatId, '📅 No appointments today.')
+        await sendTelegramMessage(biz.telegram_bot_token, chatId, '📅 No hay citas para hoy.')
       } else {
         const statusEmoji: Record<string, string> = {
-          confirmed: '🔵', pending: '🟡', completed: '🟢', cancelled: '🔴', no_show: '❌',
+          confirmed: '🔵', pending: '🟡', completed: '🟢', paid: '💳', cancelled: '🔴', no_show: '❌',
         }
         const lines = appts.map((a) => {
-          const time = new Date(a.starts_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+          const time = new Date(a.starts_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: timezone })
           const rawName = (a.clients as unknown as { name: string } | null)?.name ?? 'Walk-in'
           const client = toTitleCase(rawName)
           const service = (a.services as unknown as { name: string } | null)?.name ?? '—'
@@ -200,14 +222,17 @@ export async function POST(req: NextRequest) {
         })
         const statuses = new Set(appts.map((a) => a.status))
         const legend = [
-          '🔵 Confirmed',
-          '🟢 Completed',
-          ...(statuses.has('cancelled') ? ['🔴 Cancelled'] : []),
+          ...(statuses.has('pending') ? ['🟡 Pendiente'] : []),
+          ...(statuses.has('confirmed') ? ['🔵 Confirmada'] : []),
+          ...(statuses.has('completed') ? ['🟢 Completada'] : []),
+          ...(statuses.has('paid') ? ['💳 Pagada'] : []),
+          ...(statuses.has('cancelled') ? ['🔴 Cancelada'] : []),
+          ...(statuses.has('no_show') ? ['❌ No se presentó'] : []),
         ].join('  ')
         await sendTelegramMessage(
           biz.telegram_bot_token,
           chatId,
-          `📅 <b>Today's appointments (${appts.length})</b>\n\n${lines.join('\n')}\n\n${legend}`
+          `📅 <b>Citas de hoy (${appts.length})</b>\n\n${lines.join('\n')}\n\n${legend}`
         )
       }
       return NextResponse.json({ ok: true })
@@ -219,12 +244,12 @@ export async function POST(req: NextRequest) {
         biz.telegram_bot_token,
         chatId,
         [
-          `<b>Pronto Bot — available commands:</b>`,
+          `<b>Bot de Turno — comandos disponibles:</b>`,
           ``,
-          `/today — today's appointments (owner only)`,
-          `/link {phone} — link your Telegram to your client profile`,
-          `  Example: /link +79001234567`,
-          `/help — this message`,
+          `/today — citas de hoy (solo para propietarios)`,
+          `/link {teléfono} — vincula tu Telegram con tu perfil de cliente`,
+          `  Ejemplo: /link +573001234567`,
+          `/help — muestra este mensaje`,
         ].join('\n')
       )
       return NextResponse.json({ ok: true })
@@ -232,7 +257,7 @@ export async function POST(req: NextRequest) {
 
     // Fallback
     if (biz.telegram_chat_id === chatId) {
-      await sendTelegramMessage(biz.telegram_bot_token, chatId, 'Use /help to see available commands.')
+      await sendTelegramMessage(biz.telegram_bot_token, chatId, 'Usa /help para ver los comandos disponibles.')
     }
 
     return NextResponse.json({ ok: true })
