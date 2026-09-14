@@ -42,10 +42,10 @@ function generateSlots(openTime: string, closeTime: string, durationMin: number)
 
 const baseCard: React.CSSProperties = {
   background: 'white',
-  border: '0.5px solid #E8E0D8',
-  borderRadius: 12,
-  padding: '14px 16px',
-  marginBottom: 8,
+  border: '1px solid #dfe2f0',
+  borderRadius: 10,
+  padding: '12px 14px',
+  marginBottom: 6,
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -63,12 +63,12 @@ function StepBadge({ label }: { label: string }) {
 }
 
 function SectionTitle({ text }: { text: string }) {
-  return <h2 style={{ fontSize: 17, fontWeight: 500, color: '#2D2926', marginBottom: 14, marginTop: 0 }}>{text}</h2>
+  return <h2 style={{ fontSize: 18, fontWeight: 650, color: '#182039', marginBottom: 12, marginTop: 0 }}>{text}</h2>
 }
 
 function BackLink({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{ fontSize: 13, color: '#9A8E85', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 16, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+    <button onClick={onClick} style={{ fontSize: 13, color: '#69738f', display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
       {label}
     </button>
   )
@@ -79,7 +79,7 @@ function CtaButton({ label, onClick, disabled }: { label: string; onClick: () =>
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{ background: disabled ? '#C4BAB3' : 'var(--brand)', color: 'white', border: 'none', borderRadius: 10, padding: '13px 20px', fontSize: 14, fontWeight: 500, width: '100%', marginTop: 16, cursor: disabled ? 'not-allowed' : 'pointer' }}
+      style={{ background: disabled ? '#b8bfd2' : 'var(--brand)', color: 'white', border: 'none', borderRadius: 9, padding: '12px 20px', fontSize: 14, fontWeight: 650, width: '100%', marginTop: 14, cursor: disabled ? 'not-allowed' : 'pointer' }}
     >
       {label}
     </button>
@@ -330,24 +330,24 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       : null
 
     return (
-      <div style={{ background: 'white', border: '0.5px solid #E8E0D8', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
+      <div style={{ background: 'white', border: '1px solid #dfe2f0', borderRadius: 14, padding: '26px 22px', textAlign: 'center' }}>
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" style={{ margin: '0 auto 16px', display: 'block' }}>
           <circle cx="28" cy="28" r="27" stroke="var(--brand)" strokeWidth="2" fill="var(--brand-light)" />
           <path d="M17 28L24 35L39 20" stroke="var(--brand)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
 
-        <h2 style={{ fontSize: 20, fontWeight: 500, color: '#2D2926', margin: '0 0 8px' }}>{t('success.heading')}</h2>
-        <p style={{ fontSize: 14, color: '#9A8E85', margin: '0 0 4px' }}>
+        <h2 style={{ fontSize: 20, fontWeight: 650, color: '#182039', margin: '0 0 8px' }}>{t('success.heading')}</h2>
+        <p style={{ fontSize: 14, color: '#69738f', margin: '0 0 4px' }}>
           {selectedService?.name} · {date} at {time ? formatSlot(time) : ''}
           {selectedEmployeeObj && ` · ${selectedEmployeeObj.name}`}
         </p>
-        <p style={{ fontSize: 14, color: '#9A8E85', margin: '0 0 24px' }}>{t('success.body')}</p>
+        <p style={{ fontSize: 14, color: '#69738f', margin: '0 0 20px' }}>{t('success.body')}</p>
 
         {/* Messenger opt-in — hidden if client already has Telegram connected */}
         {!clientHasTelegram && (telegramLink || viberLink) && (
-          <div style={{ border: '0.5px solid #E8E0D8', borderRadius: 12, padding: 16, marginBottom: 20, textAlign: 'left' }}>
-            <p style={{ fontSize: 14, fontWeight: 500, color: '#2D2926', margin: '0 0 4px' }}>{t('success.optInHeading')}</p>
-            <p style={{ fontSize: 12, color: '#9A8E85', margin: '0 0 12px' }}>{t('success.optInSub')}</p>
+          <div style={{ border: '1px solid #dfe2f0', borderRadius: 10, padding: 14, marginBottom: 18, textAlign: 'left' }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#182039', margin: '0 0 4px' }}>{t('success.optInHeading')}</p>
+            <p style={{ fontSize: 12, color: '#69738f', margin: '0 0 10px' }}>{t('success.optInSub')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {telegramLink && (
                 <a href={telegramLink} target="_blank" rel="noopener noreferrer"
@@ -381,13 +381,13 @@ export function PublicBookingForm({ business, services, employees, workingHours,
             })}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'white', border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 20px', fontSize: 14, color: '#2D2926', textDecoration: 'none', fontWeight: 500 }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'white', border: '1px solid #dfe2f0', borderRadius: 9, padding: '10px 20px', fontSize: 14, color: '#182039', textDecoration: 'none', fontWeight: 600 }}
           >
             <CalendarPlus style={{ width: 16, height: 16 }} />
             Add to Google Calendar
           </a>
           <button onClick={resetAll}
-            style={{ background: 'white', border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 20px', fontSize: 14, color: '#2D2926', cursor: 'pointer', fontWeight: 500 }}>
+            style={{ background: 'white', border: '1px solid #dfe2f0', borderRadius: 9, padding: '10px 20px', fontSize: 14, color: '#182039', cursor: 'pointer', fontWeight: 600 }}>
             {t('success.bookAnother')}
           </button>
         </div>
@@ -404,14 +404,14 @@ export function PublicBookingForm({ business, services, employees, workingHours,
           <StepBadge label="Select service" />
           <SectionTitle text={t('selectService.heading')} />
           {services.length === 0 ? (
-            <p style={{ fontSize: 14, color: '#9A8E85' }}>{t('selectService.empty')}</p>
+            <p style={{ fontSize: 14, color: '#69738f' }}>{t('selectService.empty')}</p>
           ) : (
             services.map((s) => (
               <button key={s.id} onClick={() => handleSelectService(s)} style={baseCard}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: '#2D2926' }}>{s.name}</div>
-                  {s.description && <div style={{ fontSize: 12, color: '#9A8E85', marginTop: 2 }}>{s.description}</div>}
-                  <div style={{ fontSize: 12, color: '#9A8E85', marginTop: 2 }}>{t('selectService.minutes', { duration: s.duration_min })}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#182039' }}>{s.name}</div>
+                  {s.description && <div style={{ fontSize: 12, color: '#69738f', marginTop: 2 }}>{s.description}</div>}
+                  <div style={{ fontSize: 12, color: '#69738f', marginTop: 2 }}>{t('selectService.minutes', { duration: s.duration_min })}</div>
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--brand)', flexShrink: 0, marginLeft: 12 }}>
                   {formatCurrency(s.price, business.currency)}
@@ -428,14 +428,14 @@ export function PublicBookingForm({ business, services, employees, workingHours,
           <BackLink label={t('selectEmployee.back')} onClick={handleBackFromEmployee} />
           <StepBadge label="Choose specialist" />
           <SectionTitle text={t('selectEmployee.heading')} />
-          <p style={{ fontSize: 13, color: '#9A8E85', marginTop: -8, marginBottom: 14 }}>{selectedService.name}</p>
+          <p style={{ fontSize: 13, color: '#69738f', marginTop: -8, marginBottom: 12 }}>{selectedService.name}</p>
 
           <button onClick={() => handleSelectEmployee('')} style={{ ...baseCard, borderStyle: 'dashed' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F0EBE6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 18, color: '#9A8E85' }}>?</span>
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#eef0f8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 18, color: '#69738f' }}>?</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#9A8E85' }}>{t('selectEmployee.anyone')}</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#69738f' }}>{t('selectEmployee.anyone')}</span>
             </div>
           </button>
 
@@ -445,7 +445,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--brand-light)', color: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 14, flexShrink: 0 }}>
                   {e.name[0].toUpperCase()}
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 500, color: '#2D2926' }}>{e.name}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#182039' }}>{e.name}</span>
               </div>
             </button>
           ))}
@@ -460,18 +460,18 @@ export function PublicBookingForm({ business, services, employees, workingHours,
           <SectionTitle text={t('datetime.heading')} />
 
           {slotTakenError && (
-            <div style={{ marginBottom: 16, padding: 12, background: '#FFF8ED', border: '0.5px solid #F5C842', borderRadius: 10, fontSize: 13, color: '#7A5C00' }}>
+            <div style={{ marginBottom: 14, padding: 11, background: '#fff7df', border: '1px solid #f0c85c', borderRadius: 9, fontSize: 13, color: '#765b12' }}>
               ⚠ This time was just booked by someone else. Please choose a different time.
             </div>
           )}
 
-          <p style={{ fontSize: 13, color: '#9A8E85', marginTop: -8, marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: '#69738f', marginTop: -8, marginBottom: 14 }}>
             {selectedService.name} · {selectedService.duration_min} min
             {selectedEmployeeObj && ` · ${selectedEmployeeObj.name}`}
           </p>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>{t('datetime.dateLabel')}</label>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#182039', marginBottom: 6, display: 'block' }}>{t('datetime.dateLabel')}</label>
             <DatePicker
               value={date}
               onChange={(v) => { setDate(v); setSlotTakenError(false) }}
@@ -483,18 +483,18 @@ export function PublicBookingForm({ business, services, employees, workingHours,
 
           {date && (
             <div>
-              <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>{t('datetime.timeLabel')}</label>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#182039', marginBottom: 6, display: 'block' }}>{t('datetime.timeLabel')}</label>
               {loadingSlots ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#9A8E85' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#69738f' }}>
                   <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
                   Loading available times&hellip;
                 </div>
               ) : dayClosed ? (
-                <div style={{ padding: 12, background: '#F5F0EB', borderRadius: 10, fontSize: 14, color: '#9A8E85' }}>
+                <div style={{ padding: 11, background: '#eef0f8', borderRadius: 9, fontSize: 14, color: '#69738f' }}>
                   This day is outside working hours. Please choose another date.
                 </div>
               ) : availableSlots.length === 0 ? (
-                <div style={{ padding: 12, background: '#F5F0EB', borderRadius: 10, fontSize: 14, color: '#9A8E85' }}>
+                <div style={{ padding: 11, background: '#eef0f8', borderRadius: 9, fontSize: 14, color: '#69738f' }}>
                   No available times for this day. Please choose another date.
                 </div>
               ) : (
@@ -508,13 +508,13 @@ export function PublicBookingForm({ business, services, employees, workingHours,
                       <button key={ts} onClick={() => { setTime(ts); setSlotTakenError(false) }}
                         style={{
                           background: isSelected ? 'var(--brand)' : 'white',
-                          border: `0.5px solid ${isSelected ? 'var(--brand)' : '#E8E0D8'}`,
+                          border: `1px solid ${isSelected ? 'var(--brand)' : '#dfe2f0'}`,
                           borderRadius: 10,
                           padding: '10px 4px',
                           textAlign: 'center',
                           fontSize: 13,
                           fontWeight: 500,
-                          color: isSelected ? 'white' : '#2D2926',
+                          color: isSelected ? 'white' : '#182039',
                           cursor: 'pointer',
                         }}>
                         <div>{formatSlot(ts)}</div>
@@ -549,15 +549,15 @@ export function PublicBookingForm({ business, services, employees, workingHours,
               { key: 'email' as const, label: t('contact.emailLabel'), placeholder: t('contact.emailPlaceholder'), type: 'email' },
             ] as const).map(({ key, label, placeholder, type }) => (
               <div key={key}>
-                <label style={{ fontSize: 13, fontWeight: 500, color: '#2D2926', marginBottom: 6, display: 'block' }}>{label}</label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#182039', marginBottom: 6, display: 'block' }}>{label}</label>
                 <input
                   type={type}
                   value={contact[key]}
                   onChange={(e) => setContact((c) => ({ ...c, [key]: e.target.value }))}
                   placeholder={placeholder}
-                  style={{ border: '0.5px solid #E8E0D8', borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#2D2926', width: '100%', background: 'white', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ border: '1px solid #dfe2f0', borderRadius: 9, padding: '10px 13px', fontSize: 14, color: '#182039', width: '100%', background: 'white', outline: 'none', boxSizing: 'border-box' }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--brand)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = '#E8E0D8' }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#dfe2f0' }}
                 />
               </div>
             ))}
@@ -573,7 +573,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
             onClick={submit}
             disabled={!contact.name || saving}
             style={{
-              background: (!contact.name || saving) ? '#C4BAB3' : 'var(--brand)',
+              background: (!contact.name || saving) ? '#b8bfd2' : 'var(--brand)',
               color: 'white',
               border: 'none',
               borderRadius: 10,
@@ -587,7 +587,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
           >
             {saving ? t('contact.booking') : t('contact.confirm', { price: formatCurrency(selectedService?.price ?? 0, business.currency) })}
           </button>
-          <p style={{ fontSize: 11, color: '#9A8E85', textAlign: 'center', marginTop: 12 }}>{t('contact.noRegistration')}</p>
+          <p style={{ fontSize: 11, color: '#69738f', textAlign: 'center', marginTop: 10 }}>{t('contact.noRegistration')}</p>
         </div>
       )}
 

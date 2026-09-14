@@ -75,7 +75,7 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
   const telegramBotUsername = telegramInfo.ok ? (telegramInfo as { ok: true; result: { username: string } }).result?.username ?? null : null
   const viberBotUri = viberInfo.ok ? (viberInfo as { ok: true; uri?: string }).uri ?? null : null
 
-  const brandColor = business.brand_color || '#2D2926'
+  const brandColor = business.brand_color || '#6d4aff'
 
   return (
     <div
@@ -85,8 +85,8 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
       } as React.CSSProperties}
     >
       {/* Header */}
-      <header style={{ background: 'white', borderBottom: '0.5px solid #E8E0D8', padding: '14px 16px' }}>
-        <div style={{ maxWidth: 448, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <header style={{ background: '#ffffff', borderBottom: '1px solid #dfe2f0', padding: '12px 16px' }}>
+        <div style={{ maxWidth: 520, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           {business.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={business.logo_url} alt={business.name} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover' }} />
@@ -96,15 +96,15 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
             </div>
           )}
           <div>
-            <div style={{ fontSize: 15, fontWeight: 500, color: '#2D2926' }}>{business.name}</div>
-            <div style={{ fontSize: 12, color: '#9A8E85' }}>Book an appointment</div>
+            <div style={{ fontSize: 15, fontWeight: 650, color: '#182039' }}>{business.name}</div>
+            <div style={{ fontSize: 12, color: '#737b96' }}>Book an appointment</div>
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <div style={{ background: '#FBF8F5', minHeight: 'calc(100vh - 67px)', padding: '20px 16px' }}>
-        <div style={{ maxWidth: 448, margin: '0 auto' }}>
+      <div style={{ background: '#f3f4fb', minHeight: 'calc(100vh - 67px)', padding: '18px 16px 28px' }}>
+        <div style={{ maxWidth: 520, margin: '0 auto' }}>
           <PublicBookingForm
             business={business}
             services={services ?? []}

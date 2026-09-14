@@ -79,12 +79,12 @@ export function tplNewBooking(opts: {
 }): string {
   const source = opts.source === 'online' ? ' 🌐 online' : ''
   return [
-    `📅 <b>New booking${source}</b>`,
+    `📅 <b>Nueva reserva${source}</b>`,
     ``,
-    `👤 Client: ${opts.clientName}`,
-    `✂️ Service: ${opts.serviceName}`,
-    `🕐 ${opts.date} at ${opts.time}`,
-    opts.employeeName ? `👷 Employee: ${opts.employeeName}` : '',
+    `👤 Cliente: ${opts.clientName}`,
+    `✂️ Servicio: ${opts.serviceName}`,
+    `🕐 ${opts.date} a las ${opts.time}`,
+    opts.employeeName ? `👷 Profesional: ${opts.employeeName}` : '',
   ]
     .filter(Boolean)
     .join('\n')
@@ -97,13 +97,13 @@ export function tplReminder(opts: {
   time: string
   isOneHour?: boolean
 }): string {
-  const when = opts.isOneHour ? 'in 1 hour ⏰' : 'tomorrow 📅'
+  const when = opts.isOneHour ? 'en 1 hora ⏰' : 'mañana 📅'
   return [
-    `🔔 <b>Appointment ${when}</b>`,
+    `🔔 <b>Recordatorio de cita: ${when}</b>`,
     ``,
     `👤 ${opts.clientName}`,
     `✂️ ${opts.serviceName}`,
-    `🕐 ${opts.date} at ${opts.time}`,
+    `🕐 ${opts.date} a las ${opts.time}`,
   ].join('\n')
 }
 
@@ -114,10 +114,10 @@ export function tplLowStock(opts: {
   threshold: number
 }): string {
   return [
-    `⚠️ <b>Low stock alert</b>`,
+    `⚠️ <b>Alerta de stock bajo</b>`,
     ``,
     `📦 ${opts.itemName}`,
-    `Current: <b>${opts.quantity} ${opts.unit}</b> (threshold: ${opts.threshold})`,
+    `Actual: <b>${opts.quantity} ${opts.unit}</b> (mínimo: ${opts.threshold})`,
   ].join('\n')
 }
 
@@ -126,11 +126,11 @@ export function tplThankYou(opts: {
   serviceName: string
 }): string {
   return [
-    `✅ <b>Visit completed</b>`,
+    `✅ <b>Visita completada</b>`,
     ``,
     `👤 ${opts.clientName}`,
     `✂️ ${opts.serviceName}`,
-    `Thank-you message sent to client.`,
+    `Mensaje de agradecimiento enviado al cliente.`,
   ].join('\n')
 }
 
@@ -138,10 +138,10 @@ export function tplReactivation(opts: {
   clientName: string
 }): string {
   return [
-    `📤 <b>Reactivation sent</b>`,
+    `📤 <b>Reactivación enviada</b>`,
     ``,
     `👤 ${opts.clientName}`,
-    `We invited this client to return after 30 days of inactivity.`,
+    `Invitamos a este cliente a regresar después de 30 días de inactividad.`,
   ].join('\n')
 }
 
@@ -149,10 +149,10 @@ export function tplBirthday(opts: {
   clientName: string
 }): string {
   return [
-    `🎂 <b>Birthday message sent</b>`,
+    `🎂 <b>Mensaje de cumpleaños enviado</b>`,
     ``,
     `👤 ${opts.clientName}`,
-    `We sent them birthday wishes today.`,
+    `Hoy le enviamos nuestros mejores deseos de cumpleaños.`,
   ].join('\n')
 }
 
@@ -167,13 +167,13 @@ export function tplReminderClient(opts: {
   address?: string
   isOneHour?: boolean
 }): string {
-  const when = opts.isOneHour ? 'in 1 hour ⏰' : 'tomorrow 📅'
+  const when = opts.isOneHour ? 'en 1 hora ⏰' : 'mañana 📅'
   const lines = [
-    `🔔 <b>Appointment reminder ${when}</b>`,
+    `🔔 <b>Recordatorio de cita: ${when}</b>`,
     ``,
     `👤 ${opts.clientName}`,
     `✂️ ${opts.serviceName}`,
-    `🕐 ${opts.date} at ${opts.time}`,
+    `🕐 ${opts.date} a las ${opts.time}`,
     `🏠 ${opts.businessName}`,
   ]
   if (opts.address) lines.push(`📍 ${opts.address}`)
@@ -187,14 +187,14 @@ export function tplThankYouClient(opts: {
   bookingUrl?: string
 }): string {
   const lines = [
-    `✅ <b>Thank you for your visit, ${opts.clientName}!</b>`,
+    `✅ <b>¡Gracias por tu visita, ${opts.clientName}!</b>`,
     ``,
     `✂️ ${opts.serviceName}`,
     `🏠 ${opts.businessName}`,
     ``,
-    `We'd love to see you again!`,
+    `¡Nos encantaría verte de nuevo!`,
   ]
-  if (opts.bookingUrl) lines.push(``, `📅 Book again: ${opts.bookingUrl}`)
+  if (opts.bookingUrl) lines.push(``, `📅 Reserva de nuevo: ${opts.bookingUrl}`)
   return lines.join('\n')
 }
 
@@ -204,11 +204,11 @@ export function tplReactivationClient(opts: {
   bookingUrl?: string
 }): string {
   const lines = [
-    `👋 <b>${opts.clientName}, it's been a while!</b>`,
+    `👋 <b>${opts.clientName}, ¡ha pasado tiempo!</b>`,
     ``,
-    `Come back to ${opts.businessName} — we'd love to see you!`,
+    `Vuelve a ${opts.businessName}; ¡nos encantaría verte!`,
   ]
-  if (opts.bookingUrl) lines.push(``, `📅 Book now: ${opts.bookingUrl}`)
+  if (opts.bookingUrl) lines.push(``, `📅 Reserva ahora: ${opts.bookingUrl}`)
   return lines.join('\n')
 }
 
@@ -218,10 +218,10 @@ export function tplBirthdayClient(opts: {
   bookingUrl?: string
 }): string {
   const lines = [
-    `🎂 <b>Happy Birthday, ${opts.clientName}!</b>`,
+    `🎂 <b>¡Feliz cumpleaños, ${opts.clientName}!</b>`,
     ``,
-    `The team at ${opts.businessName} wishes you all the best! 🎉`,
+    `¡El equipo de ${opts.businessName} te desea lo mejor! 🎉`,
   ]
-  if (opts.bookingUrl) lines.push(``, `🎁 Treat yourself: ${opts.bookingUrl}`)
+  if (opts.bookingUrl) lines.push(``, `🎁 Date un gusto: ${opts.bookingUrl}`)
   return lines.join('\n')
 }

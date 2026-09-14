@@ -19,25 +19,26 @@ function layout(businessName: string, body: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${businessName}</title>
 </head>
-<body style="margin:0;padding:0;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 16px;">
+<body style="margin:0;padding:0;background:#eef0f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#20243a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef0f8;padding:32px 16px;">
     <tr>
       <td align="center">
-        <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;border:1px solid #dfe2f0;overflow:hidden;">
           <tr>
-            <td style="background:#2563eb;padding:20px 32px;">
-              <span style="color:#ffffff;font-size:20px;font-weight:700;">${businessName}</span>
+            <td style="background:#0d1b2e;padding:24px 32px;border-bottom:4px solid #8b5cf6;">
+              <span style="color:#ffffff;font-size:21px;font-weight:700;letter-spacing:.2px;">${businessName}</span>
+              <span style="display:block;color:#a5b4fc;font-size:12px;margin-top:4px;">Gestión sencilla para tu negocio</span>
             </td>
           </tr>
           <tr>
-            <td style="padding:32px;">
+            <td style="padding:32px 32px 28px;">
               ${body}
             </td>
           </tr>
           <tr>
-            <td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
-              <p style="margin:0;font-size:12px;color:#9ca3af;">
-                Desarrollado con <a href="${APP_URL}" style="color:#2563eb;text-decoration:none;">Turno</a>
+            <td style="background:#f7f7fb;padding:18px 32px;border-top:1px solid #e5e7eb;">
+              <p style="margin:0;font-size:12px;color:#7b8198;line-height:1.5;">
+                Desarrollado con <a href="${APP_URL}" style="color:#6d4aff;text-decoration:none;font-weight:600;">Turno</a>
               </p>
             </td>
           </tr>
@@ -50,15 +51,15 @@ function layout(businessName: string, body: string): string {
 }
 
 function btn(text: string, href: string) {
-  return `<a href="${href}" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#2563eb;color:#fff;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;">${text}</a>`
+  return `<a href="${href}" style="display:inline-block;margin-top:20px;padding:13px 24px;background:#6d4aff;color:#ffffff;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 4px 10px rgba(109,74,255,.22);">${text}</a>`
 }
 
 function h1(text: string) {
-  return `<h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">${text}</h1>`
+  return `<h1 style="margin:0 0 8px;font-size:23px;line-height:1.3;font-weight:750;color:#182039;">${text}</h1>`
 }
 
 function p(text: string) {
-  return `<p style="margin:8px 0;font-size:15px;color:#374151;line-height:1.6;">${text}</p>`
+  return `<p style="margin:10px 0;font-size:15px;color:#4b536b;line-height:1.65;">${text}</p>`
 }
 
 function info(rows: [string, string][]) {
@@ -66,12 +67,12 @@ function info(rows: [string, string][]) {
     .map(
       ([label, value]) => `
     <tr>
-      <td style="padding:8px 12px;font-size:14px;color:#6b7280;width:140px;border-bottom:1px solid #f3f4f6;">${label}</td>
-      <td style="padding:8px 12px;font-size:14px;color:#111827;font-weight:500;border-bottom:1px solid #f3f4f6;">${value}</td>
+      <td style="padding:10px 12px;font-size:13px;color:#737b96;width:140px;border-bottom:1px solid #e9eaf3;">${label}</td>
+      <td style="padding:10px 12px;font-size:14px;color:#20243a;font-weight:600;border-bottom:1px solid #e9eaf3;">${value}</td>
     </tr>`
     )
     .join('')
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">${cells}</table>`
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0;border:1px solid #dfe2f0;border-radius:10px;overflow:hidden;background:#fbfbfe;">${cells}</table>`
 }
 
 // ─── Booking confirmation ─────────────────────────────────────────────────────
@@ -98,7 +99,7 @@ export async function sendBookingConfirmation(opts: {
       ...(opts.address ? [['Dirección', opts.address] as [string, string]] : []),
     ])}
     ${p('¡Nos vemos pronto!')}
-    ${opts.calendarUrl ? p(`<a href="${opts.calendarUrl}" style="color:#2563eb;">Agregar a Google Calendar</a>`) : ''}
+    ${opts.calendarUrl ? p(`<a href="${opts.calendarUrl}" style="color:#6d4aff;font-weight:600;text-decoration:none;">Agregar a Google Calendar →</a>`) : ''}
   `
   return sendMail({
     from: getFromAddress(opts.businessName),
