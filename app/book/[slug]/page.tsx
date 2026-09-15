@@ -105,8 +105,8 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
       {/* Content */}
       <main style={{ background: '#eef0f8', minHeight: 'calc(100vh - 84px)', padding: '28px 16px 44px' }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
-          <div style={{ background: '#ffffff', border: '1px solid #dfe2f0', borderRadius: 16, boxShadow: '0 14px 36px rgba(24,32,57,.10)', overflow: 'hidden' }}>
-            <div style={{ padding: '22px 28px 18px', borderBottom: '1px solid #e9eaf3', background: '#fbfbfe' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #dfe2f0', borderRadius: 16, boxShadow: '0 14px 36px rgba(24,32,57,.10)', overflow: 'visible' }}>
+            <div style={{ padding: '22px 28px 18px', borderBottom: '1px solid #e9eaf3', background: '#fbfbfe', borderRadius: '16px 16px 0 0' }}>
               <div style={{ fontSize: 12, color: '#6d4aff', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Reserva online</div>
               <div style={{ fontSize: 22, color: '#182039', fontWeight: 700, marginTop: 5 }}>Elige cómo podemos atenderte</div>
               <div style={{ fontSize: 13, color: '#69738f', marginTop: 5 }}>Selecciona un servicio y encuentra el horario que mejor te convenga.</div>
