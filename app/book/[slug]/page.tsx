@@ -85,36 +85,45 @@ export default async function PublicBookingPage(props: { params: Promise<{ slug:
       } as React.CSSProperties}
     >
       {/* Header */}
-      <header style={{ background: '#ffffff', borderBottom: '1px solid #dfe2f0', padding: '12px 16px' }}>
-        <div style={{ maxWidth: 520, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <header style={{ background: '#0d1b2e', borderBottom: '4px solid #8b5cf6', padding: '18px 16px' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           {business.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={business.logo_url} alt={business.name} style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'cover' }} />
           ) : (
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 500, fontSize: 16 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 11, background: 'var(--brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 17 }}>
               {business.name[0]}
             </div>
           )}
           <div>
-            <div style={{ fontSize: 15, fontWeight: 650, color: '#182039' }}>{business.name}</div>
-            <div style={{ fontSize: 12, color: '#737b96' }}>Book an appointment</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: '#ffffff' }}>{business.name}</div>
+            <div style={{ fontSize: 12, color: '#a5b4fc', marginTop: 2 }}>Reserva tu cita</div>
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <div style={{ background: '#f3f4fb', minHeight: 'calc(100vh - 67px)', padding: '18px 16px 28px' }}>
-        <div style={{ maxWidth: 520, margin: '0 auto' }}>
-          <PublicBookingForm
-            business={business}
-            services={services ?? []}
-            employees={employees ?? []}
-            workingHours={businessHours ?? []}
-            telegramBotUsername={telegramBotUsername}
-            viberBotUri={viberBotUri}
-          />
+      <main style={{ background: '#eef0f8', minHeight: 'calc(100vh - 84px)', padding: '28px 16px 44px' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #dfe2f0', borderRadius: 16, boxShadow: '0 14px 36px rgba(24,32,57,.10)', overflow: 'hidden' }}>
+            <div style={{ padding: '22px 28px 18px', borderBottom: '1px solid #e9eaf3', background: '#fbfbfe' }}>
+              <div style={{ fontSize: 12, color: '#6d4aff', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Reserva online</div>
+              <div style={{ fontSize: 22, color: '#182039', fontWeight: 700, marginTop: 5 }}>Elige cómo podemos atenderte</div>
+              <div style={{ fontSize: 13, color: '#69738f', marginTop: 5 }}>Selecciona un servicio y encuentra el horario que mejor te convenga.</div>
+            </div>
+            <div style={{ padding: '24px 28px 28px' }}>
+              <PublicBookingForm
+                business={business}
+                services={services ?? []}
+                employees={employees ?? []}
+                workingHours={businessHours ?? []}
+                telegramBotUsername={telegramBotUsername}
+                viberBotUri={viberBotUri}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

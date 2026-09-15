@@ -401,7 +401,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {/* ── Step 1: Service ───────────────────────────────────────────────── */}
       {step === 'service' && (
         <div>
-          <StepBadge label="Select service" />
+          <StepBadge label="Servicio" />
           <SectionTitle text={t('selectService.heading')} />
           {services.length === 0 ? (
             <p style={{ fontSize: 14, color: '#69738f' }}>{t('selectService.empty')}</p>
@@ -426,7 +426,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {step === 'employee' && selectedService && (
         <div>
           <BackLink label={t('selectEmployee.back')} onClick={handleBackFromEmployee} />
-          <StepBadge label="Choose specialist" />
+          <StepBadge label="Profesional" />
           <SectionTitle text={t('selectEmployee.heading')} />
           <p style={{ fontSize: 13, color: '#69738f', marginTop: -8, marginBottom: 12 }}>{selectedService.name}</p>
 
@@ -456,7 +456,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {step === 'datetime' && selectedService && (
         <div>
           <BackLink label={t('datetime.back')} onClick={handleBackFromDatetime} />
-          <StepBadge label="Date & time" />
+          <StepBadge label="Fecha y hora" />
           <SectionTitle text={t('datetime.heading')} />
 
           {slotTakenError && (
@@ -487,15 +487,15 @@ export function PublicBookingForm({ business, services, employees, workingHours,
               {loadingSlots ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#69738f' }}>
                   <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
-                  Loading available times&hellip;
+                  Cargando horarios disponibles&hellip;
                 </div>
               ) : dayClosed ? (
                 <div style={{ padding: 11, background: '#eef0f8', borderRadius: 9, fontSize: 14, color: '#69738f' }}>
-                  This day is outside working hours. Please choose another date.
+                  Este día está fuera del horario de atención. Elige otra fecha.
                 </div>
               ) : availableSlots.length === 0 ? (
                 <div style={{ padding: 11, background: '#eef0f8', borderRadius: 9, fontSize: 14, color: '#69738f' }}>
-                  No available times for this day. Please choose another date.
+                  No hay horarios disponibles para este día. Elige otra fecha.
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -520,7 +520,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
                         <div>{formatSlot(ts)}</div>
                         {isPartial && (
                           <div style={{ fontSize: 10, color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--brand)', marginTop: 2 }}>
-                            {spotsLeft} spots left
+                            {spotsLeft} cupos disponibles
                           </div>
                         )}
                       </button>
@@ -539,7 +539,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
       {step === 'contact' && (
         <div>
           <BackLink label={t('contact.back')} onClick={() => setStep('datetime')} />
-          <StepBadge label="Your details" />
+          <StepBadge label="Tus datos" />
           <SectionTitle text={t('contact.heading')} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
