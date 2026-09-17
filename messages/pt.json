@@ -1,10 +1,10 @@
 {
   "meta": {
-    "title": "Pronto — Gestão empresarial para negócios de serviços",
+    "title": "Turno — Gestão empresarial para negócios de serviços",
     "description": "PDV, CRM, Estoque e Notificações omnicanal. Seus dados, seu servidor. Sem comissões. Instalação em um comando."
   },
   "brand": {
-    "name": "Pronto",
+    "name": "Turno",
     "tagline": "Gestão empresarial · Sem comissões"
   },
   "nav": {
@@ -33,7 +33,7 @@
     "pricingSubheading": "Ou hospede gratuitamente —",
     "pricingSubheadingLink": "clone no GitHub",
     "mostPopular": "Mais popular",
-    "footer": "Pronto © 2026 · Licença MIT",
+    "footer": "Turno © 2026 · Licença MIT",
     "plans": {
       "free": {
         "name": "Grátis",
@@ -122,7 +122,7 @@
     }
   },
   "onboarding": {
-    "logo": "Pronto",
+    "logo": "Turno",
     "intro": "Configure seu negócio em 3 passos",
     "steps": {
       "businessType": "Tipo de negócio",
@@ -147,7 +147,7 @@
       "bizNamePlaceholder": "Salão da Maya",
       "businessTypeLabel": "Tipo de negócio",
       "continue": "Continuar",
-      "slugLabel": "Sua URL no Pronto",
+      "slugLabel": "Sua URL no Turno",
       "slugHint": "Letras minúsculas, números e hífens · 3–30 caracteres",
       "slugChecking": "Verificando…",
       "slugAvailable": "Disponível ✓",
@@ -167,7 +167,7 @@
       "continue": "Continuar"
     },
     "checklist": {
-      "title": "Começar com o Pronto",
+      "title": "Começar com o Turno",
       "progress": "{done} de {total} concluído",
       "step1": "Perfil do negócio criado",
       "step2": "Adicione seu primeiro serviço",
@@ -332,7 +332,7 @@
     "moreActions": "Mais ações",
     "import": {
       "title": "Importar produtos",
-      "uploadHint": "Tem uma lista de preços do fornecedor em Excel ou CSV? Envie diretamente — o Pronto detectará as colunas automaticamente.",
+      "uploadHint": "Tem uma lista de preços do fornecedor em Excel ou CSV? Envie diretamente — o Turno detectará as colunas automaticamente.",
       "dropzone": "Arraste o arquivo aqui ou clique para buscar",
       "dropzoneFormats": ".xlsx  ·  .xls  ·  .csv",
       "orSeparator": "ou",
@@ -927,7 +927,7 @@
   },
   "feedback": {
     "heading": "Compartilhe sua opinião",
-    "subheading": "Ajude-nos a melhorar o Pronto",
+    "subheading": "Ajude-nos a melhorar o Turno",
     "placeholder": "O que você acha?",
     "placeholderGood": "O que você mais gosta?",
     "placeholderBad": "O que não está funcionando?",
@@ -935,7 +935,7 @@
     "submit": "Enviar",
     "sending": "Enviando…",
     "thanks": "Obrigado pelo seu feedback!",
-    "thanksSub": "Isso nos ajuda a melhorar o Pronto.",
+    "thanksSub": "Isso nos ajuda a melhorar o Turno.",
     "close": "Fechar"
   },
   "clientDetail": {
