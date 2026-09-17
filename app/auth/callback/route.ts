@@ -14,6 +14,12 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
+    if (error) {
+      // Causa más común: el link se abrió en un navegador/dispositivo distinto
+      // al que originó la solicitud (falta la cookie del code_verifier de PKCE).
+      console.error('[auth/callback] exchangeCodeForSession failed:', error.message)
+    }
+
     if (!error && data.user) {
       // Сброс пароля — сессия установлена, сразу на страницу смены пароля
       if (next === '/reset-password') {

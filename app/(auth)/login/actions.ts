@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -11,7 +12,8 @@ export async function login(formData: FormData) {
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
-    redirect(`/login?error=${encodeURIComponent('Invalid email or password')}`)
+    const t = await getTranslations('auth.login')
+    redirect(`/login?error=${encodeURIComponent(t('errorInvalid'))}`)
   }
 
   redirect(redirectTo)
@@ -29,7 +31,8 @@ export async function loginWithGoogle(formData: FormData) {
   })
 
   if (error || !data.url) {
-    redirect(`/login?error=${encodeURIComponent('Google sign-in failed')}`)
+    const t = await getTranslations('auth.login')
+    redirect(`/login?error=${encodeURIComponent(t('errorGoogle'))}`)
   }
 
   redirect(data.url)

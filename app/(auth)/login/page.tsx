@@ -69,7 +69,7 @@ export default async function LoginPage(
           />
           <div className="text-right mt-1">
             <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">
-              Forgot password?
+              {t('forgotPassword')}
             </Link>
           </div>
         </div>
