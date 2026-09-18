@@ -67,7 +67,7 @@
                     color: #182039;
                   "
                 >
-                  Restablece tu contraseña
+                  Accede a tu cuenta
                 </h1>
                 <p
                   style="
@@ -77,8 +77,8 @@
                     line-height: 1.65;
                   "
                 >
-                  Recibimos una solicitud para restablecer la contraseña de tu
-                  cuenta. Haz clic abajo para crear una nueva.
+                  Usa el botón de abajo para iniciar sesión en Turno y continuar
+                  gestionando tu negocio.
                 </p>
                 <a
                   href="{{ .ConfirmationURL }}"
@@ -94,11 +94,28 @@
                     text-decoration: none;
                     box-shadow: 0 4px 10px rgba(109, 74, 255, 0.22);
                   "
-                  >Crear nueva contraseña</a
+                  >Iniciar sesión</a
                 >
+                <p style="margin: 20px 0 8px; font-size: 13px; color: #7b8198">
+                  También puedes usar este código de acceso:
+                </p>
+                <div
+                  style="
+                    padding: 16px;
+                    background: #f1efff;
+                    border: 1px solid #ddd6fe;
+                    border-radius: 10px;
+                    text-align: center;
+                    font-size: 28px;
+                    font-weight: 700;
+                    letter-spacing: 4px;
+                    color: #302080;
+                  "
+                >
+                  {{ .Token }}
+                </div>
                 <p style="margin: 20px 0 0; font-size: 13px; color: #7b8198">
-                  Si no pediste esto, ignora este correo; tu contraseña actual
-                  sigue siendo válida.
+                  Si no solicitaste este acceso, ignora este correo.
                 </p>
               </td>
             </tr>

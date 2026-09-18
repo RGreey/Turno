@@ -67,7 +67,7 @@
                     color: #182039;
                   "
                 >
-                  Restablece tu contraseña
+                  Código de verificación
                 </h1>
                 <p
                   style="
@@ -77,28 +77,27 @@
                     line-height: 1.65;
                   "
                 >
-                  Recibimos una solicitud para restablecer la contraseña de tu
-                  cuenta. Haz clic abajo para crear una nueva.
+                  Usa este código para confirmar una acción sensible en tu
+                  cuenta de Turno:
                 </p>
-                <a
-                  href="{{ .ConfirmationURL }}"
+                <div
                   style="
-                    display: inline-block;
-                    margin-top: 20px;
-                    padding: 13px 24px;
-                    background: #6d4aff;
-                    color: #ffffff;
-                    border-radius: 8px;
-                    font-size: 14px;
+                    margin: 22px 0;
+                    padding: 18px;
+                    background: #f1efff;
+                    border: 1px solid #ddd6fe;
+                    border-radius: 10px;
+                    text-align: center;
+                    font-size: 28px;
                     font-weight: 700;
-                    text-decoration: none;
-                    box-shadow: 0 4px 10px rgba(109, 74, 255, 0.22);
+                    letter-spacing: 4px;
+                    color: #302080;
                   "
-                  >Crear nueva contraseña</a
                 >
+                  {{ .Token }}
+                </div>
                 <p style="margin: 20px 0 0; font-size: 13px; color: #7b8198">
-                  Si no pediste esto, ignora este correo; tu contraseña actual
-                  sigue siendo válida.
+                  Si no pediste esto, ignora este correo.
                 </p>
               </td>
             </tr>

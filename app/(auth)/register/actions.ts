@@ -11,9 +11,19 @@ export async function register(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const businessName = (formData.get('business_name') as string).trim()
+  const inviteCode = (formData.get('invite_code') as string ?? '').trim()
 
   if (!businessName) {
     redirect('/register?error=Business+name+is+required')
+  }
+
+  // Puerta de acceso: solo se puede crear cuenta con un código válido.
+  // Controla el valor esperado en la variable de entorno SIGNUP_INVITE_CODE
+  // (en Vercel → Environment Variables). Cámbialo cuando quieras "cerrar"
+  // el registro a nuevos negocios, o compártelo cuando quieras invitar a uno.
+  const expectedCode = process.env.SIGNUP_INVITE_CODE
+  if (expectedCode && inviteCode !== expectedCode) {
+    redirect(`/register?error=${encodeURIComponent('Invalid or expired invite code.')}`)
   }
 
   // Sign up
@@ -21,7 +31,6 @@ export async function register(formData: FormData) {
     email,
     password,
     options: {
-      // Сохраняем название бизнеса в метаданных пользователя
       data: { business_name: businessName },
       emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
     },
@@ -31,8 +40,6 @@ export async function register(formData: FormData) {
     redirect(`/register?error=${encodeURIComponent(signUpError?.message ?? 'Sign up failed')}`)
   }
 
-  // Используем service role чтобы создать бизнес сразу,
-  // не дожидаясь подтверждения email (обходим RLS)
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -54,8 +61,6 @@ export async function register(formData: FormData) {
     slug = `${baseSlug}-${attempt}`
   }
 
-  // get-or-create: a racing second submit (or the confirmation callback
-  // firing first) must not add a second business row for this owner.
   const business = await getOrCreateBusiness(admin, {
     owner_id: authData.user.id,
     name: businessName,
@@ -63,16 +68,11 @@ export async function register(formData: FormData) {
   })
 
   if (!business) {
-    // Don't fall through into a working session with no business behind it —
-    // the dashboard ↔ login ↔ onboarding redirect loop is worse than an
-    // explicit retry prompt.
     redirect(`/register?error=${encodeURIComponent("We couldn't finish setting up your account. Please try again.")}`)
   }
 
   await insertOwnerAsEmployee(admin, business.id, authData.user)
 
-  // В selfhosted-режиме: принудительно логиним сразу после регистрации,
-  // чтобы не блокировать владельца сервера подтверждением email.
   if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'selfhosted' && !authData.session) {
     const { data: signInData } = await supabase.auth.signInWithPassword({ email, password })
     if (signInData.session) {
@@ -80,7 +80,6 @@ export async function register(formData: FormData) {
     }
   }
 
-  // SaaS или selfhosted уже с сессией (Supabase "Confirm email" отключён)
   if (authData.session) {
     redirect('/onboarding')
   } else {
