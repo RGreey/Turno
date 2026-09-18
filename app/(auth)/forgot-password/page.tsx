@@ -11,13 +11,13 @@ export default async function ForgotPasswordPage(
   if (searchParams.sent) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-        <h1 className="text-xl font-semibold text-gray-900 mb-3">Check your email</h1>
+        <h1 className="text-xl font-semibold text-gray-900 mb-3">Revisa tu correo electrónico</h1>
         <p className="text-sm text-gray-600 mb-6">
-          We sent a password reset link to <strong>{searchParams.email}</strong>.
-          Click it to set a new password.
+          Hemos enviado un enlace para restablecer la contraseña a <strong>{searchParams.email}</strong>.
+          Haz clic en él para establecer una nueva contraseña.
         </p>
         <Link href="/login" className="text-sm text-blue-600 hover:underline">
-          ← Back to sign in
+          ← Volver a iniciar sesión
         </Link>
       </div>
     )
@@ -25,15 +25,15 @@ export default async function ForgotPasswordPage(
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-      <h1 className="text-xl font-semibold text-gray-900 mb-2">Reset your password</h1>
+      <h1 className="text-xl font-semibold text-gray-900 mb-2">Restablece tu contraseña</h1>
       <p className="text-sm text-gray-500 mb-6">
-        Enter your email and we&apos;ll send you a reset link.
+        Introduce tu correo electrónico y te enviaremos un enlace para restablecerla.
       </p>
 
       <form action={requestPasswordReset} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
-            Email
+            Correo electrónico
           </label>
           <input
             id="email"
@@ -42,7 +42,7 @@ export default async function ForgotPasswordPage(
             required
             autoComplete="email"
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="you@example.com"
+            placeholder="tu@ejemplo.com"
           />
         </div>
         <SubmitButton />
@@ -50,7 +50,7 @@ export default async function ForgotPasswordPage(
 
       <div className="mt-6">
         <Link href="/login" className="text-sm text-blue-600 hover:underline">
-          ← Back to sign in
+          ← Volver a iniciar sesión
         </Link>
       </div>
     </div>

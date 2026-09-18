@@ -84,7 +84,7 @@ export async function sendMail(msg: MailMessage): Promise<{ id?: string; error?:
 
 /** FROM-адрес из env, с разумным дефолтом.
  *  Если передан businessName — заменяет display name на имя бизнеса:
- *  "Pronto <noreply@...>" → "Ananda <noreply@...>"
+ *  " <noreply@...>" → "Ananda <noreply@...>"
  */
 export function getFromAddress(businessName?: string): string {
   const base = process.env.RESEND_FROM_EMAIL ?? process.env.SMTP_FROM ?? 'Turno <noreply@example.com>'
