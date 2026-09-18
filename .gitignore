@@ -43,6 +43,7 @@ next-env.d.ts
 
 # supabase
 supabase/.temp/
+supabase/email-templates/
 
 # Serwist service-worker build output — regenerated on every `next build`
 # (see next.config.js / app/sw.ts). Never commit this; production Docker
