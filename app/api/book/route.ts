@@ -44,6 +44,11 @@ const BookingSchema = z.object({
   name:       z.string().min(1).max(100),
   phone:      z.string().max(30).optional().nullable(),
   email:      z.string().email().optional().nullable().or(z.literal('')),
+  participants: z.array(z.object({
+    name: z.string().min(1).max(100),
+    phone: z.string().max(30).optional().nullable(),
+    email: z.string().email().optional().nullable().or(z.literal('')),
+  })).max(10).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -71,6 +76,14 @@ export async function POST(req: NextRequest) {
 
   const { businessId, serviceId, employeeId, date, time, phone, email } = parsed.data
   const name = sanitize(parsed.data.name)
+  const participants = [
+    { name, phone: phone || null, email: email || null },
+    ...(parsed.data.participants ?? []).map((participant) => ({
+      name: sanitize(participant.name),
+      phone: participant.phone || null,
+      email: participant.email || null,
+    })),
+  ]
 
   if (!phone && !email) {
     return NextResponse.json(
@@ -131,16 +144,24 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Upsert client
+  // Upsert all clients, preserving the first one as the legacy primary client.
   let clientId: string | null = null
   let hasTelegram = false
   let hasViber = false
-  if (phone || email) {
+  const participantClientIds: string[] = []
+  for (const participant of participants) {
+    if (!participant.phone && !participant.email) {
+      return NextResponse.json(
+        { error: 'contact_required', message: 'Each participant needs a phone number or email' },
+        { status: 400 }
+      )
+    }
+
     // BUG-8: search by all provided fields combined — avoids duplicate clients when
     // both phone and email are submitted but each matches a different existing record.
     const orParts: string[] = []
-    if (phone) orParts.push(`phone.eq.${phone}`)
-    if (email) orParts.push(`email.eq.${email}`)
+    if (participant.phone) orParts.push(`phone.eq.${participant.phone}`)
+    if (participant.email) orParts.push(`email.eq.${participant.email}`)
 
     const { data: matches } = await supabase
       .from('clients')
@@ -157,8 +178,8 @@ export async function POST(req: NextRequest) {
       hasViber = !!existing.viber_user_id
       // BUG-10: update both name and email if different from stored value
       const updates: { name?: string; email?: string } = {}
-      if (name && name !== existing.name) updates.name = name
-      if (email && email !== existing.email) updates.email = email
+      if (participant.name && participant.name !== existing.name) updates.name = participant.name
+      if (participant.email && participant.email !== existing.email) updates.email = participant.email
       if (Object.keys(updates).length > 0) {
         await supabase.from('clients').update(updates).eq('id', existing.id)
       }
@@ -168,9 +189,9 @@ export async function POST(req: NextRequest) {
         .from('clients')
         .insert({
           business_id: businessId,
-          name,
-          phone: phone || null,
-          email: email || null,
+          name: participant.name,
+          phone: participant.phone,
+          email: participant.email,
         })
         .select('id')
         .single()
@@ -179,6 +200,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'client_creation_failed' }, { status: 500 })
       }
       clientId = newClient.id
+    }
+    participantClientIds.push(clientId!)
+    if (participantClientIds.length === 1) {
+      hasTelegram = hasTelegram || !!(matches?.[0]?.telegram_id)
+      hasViber = hasViber || !!(matches?.[0]?.viber_user_id)
     }
   }
 
@@ -222,6 +248,19 @@ export async function POST(req: NextRequest) {
       )
     }
     console.error('[api/book] insert error:', apptErr?.message)
+    return NextResponse.json({ error: 'booking_failed' }, { status: 500 })
+  }
+
+  const uniqueParticipantClientIds = [...new Set(participantClientIds)]
+  const { error: participantErr } = await supabase
+    .from('appointment_clients')
+    .insert(uniqueParticipantClientIds.map((participantId) => ({
+      appointment_id: appt.id,
+      client_id: participantId,
+    })))
+  if (participantErr) {
+    console.error('[api/book] participant insert error:', participantErr.message)
+    await supabase.from('appointments').delete().eq('id', appt.id)
     return NextResponse.json({ error: 'booking_failed' }, { status: 500 })
   }
 

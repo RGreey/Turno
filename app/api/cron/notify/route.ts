@@ -101,10 +101,18 @@ export async function GET(req: NextRequest) {
 
   for (const a of appts24 ?? []) {
     const client = a.clients as unknown as { name: string; email: string | null; whatsapp_number: string | null; viber_user_id: string | null; telegram_id: string | null } | null
+    const { data: participantRows } = await supabase
+      .from('appointment_clients')
+      .select('clients(name, email)')
+      .eq('appointment_id', a.id)
+    const emailClients = participantRows?.flatMap((row) => {
+      const related = row.clients as unknown as { name: string; email: string | null } | { name: string; email: string | null }[] | null
+      return Array.isArray(related) ? related : related ? [related] : []
+    }) ?? (client ? [{ name: client.name, email: client.email }] : [])
     // Skip without logging if client has no contact channels at all.
     // This prevents burning a notification_log entry for a booking that can never
     // be delivered — which would permanently block retries once contact info is added.
-    if (!client?.telegram_id && !client?.email && !client?.viber_user_id && !client?.whatsapp_number) continue
+    if (!client?.telegram_id && !client?.email && !client?.viber_user_id && !client?.whatsapp_number && !emailClients.some((participant) => participant.email)) continue
     if (!await logged(a.business_id, a.id, 'reminder_24h')) continue
 
     const { data: biz } = await supabase
@@ -141,10 +149,11 @@ export async function GET(req: NextRequest) {
       )
     }
     // Email → клиенту
-    if (client?.email) {
+    for (const emailClient of emailClients) {
+      if (!emailClient.email) continue
       try {
         await sendReminder({
-          to: client.email, clientName: client.name,
+          to: emailClient.email, clientName: emailClient.name,
           businessName: biz?.name ?? '', serviceName: service?.name ?? '—',
           date, time,
           employeeName: employee?.name ?? undefined,
@@ -172,10 +181,18 @@ export async function GET(req: NextRequest) {
 
   for (const a of appts1h ?? []) {
     const client = a.clients as unknown as { name: string; email: string | null; whatsapp_number: string | null; viber_user_id: string | null; telegram_id: string | null } | null
+    const { data: participantRows } = await supabase
+      .from('appointment_clients')
+      .select('clients(name, email)')
+      .eq('appointment_id', a.id)
+    const emailClients = participantRows?.flatMap((row) => {
+      const related = row.clients as unknown as { name: string; email: string | null } | { name: string; email: string | null }[] | null
+      return Array.isArray(related) ? related : related ? [related] : []
+    }) ?? (client ? [{ name: client.name, email: client.email }] : [])
     // Skip without logging if client has no contact channels at all.
     // This prevents burning a notification_log entry for a booking that can never
     // be delivered — which would permanently block retries once contact info is added.
-    if (!client?.telegram_id && !client?.email && !client?.viber_user_id && !client?.whatsapp_number) continue
+    if (!client?.telegram_id && !client?.email && !client?.viber_user_id && !client?.whatsapp_number && !emailClients.some((participant) => participant.email)) continue
     if (!await logged(a.business_id, a.id, 'reminder_1h')) continue
 
     const { data: biz } = await supabase
@@ -212,10 +229,11 @@ export async function GET(req: NextRequest) {
       )
     }
     // Email → клиенту
-    if (client?.email) {
+    for (const emailClient of emailClients) {
+      if (!emailClient.email) continue
       try {
         await sendReminder({
-          to: client.email, clientName: client.name,
+          to: emailClient.email, clientName: emailClient.name,
           businessName: biz?.name ?? '', serviceName: service?.name ?? '—',
           date, time,
           employeeName: employee?.name ?? undefined,

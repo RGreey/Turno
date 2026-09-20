@@ -79,6 +79,21 @@ export async function POST(req: NextRequest) {
     if (apptErr) console.error('[email/confirm] appointment fetch error:', apptErr.message)
     if (!appt) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
+    const { data: participantRows } = await supabase
+      .from('appointment_clients')
+      .select('client_id, clients(name, email, whatsapp_number, telegram_id, viber_user_id)')
+      .eq('appointment_id', appt.id)
+
+    const participants = (participantRows ?? []).flatMap((row) =>
+      Array.isArray(row.clients) ? row.clients : row.clients ? [row.clients] : []
+    ) as Array<{
+      name: string
+      email: string | null
+      whatsapp_number: string | null
+      telegram_id: string | null
+      viber_user_id: string | null
+    }>
+
     const client = appt.clients as unknown as {
       name: string
       email: string | null
@@ -186,24 +201,12 @@ export async function POST(req: NextRequest) {
     // ── Email → клиенту ─────────────────────────────────────────────────────
     // Prefer the email submitted in the booking form (formEmail) over the one stored in DB,
     // since the DB record may belong to an existing client found by phone who has a different email.
-    const recipientEmail = formEmail || client?.email
-    if (!recipientEmail) {
+    const emailRecipients = participants.length > 0
+      ? participants
+      : (client ? [{ ...client, email: formEmail || client.email }] : [])
+    const recipientsWithEmail = emailRecipients.filter((participant) => participant.email)
+    if (recipientsWithEmail.length === 0) {
       return NextResponse.json({ sent: true, email: 'skipped: no client email' })
-    }
-
-    // Check dedup BEFORE sending — log record is written only after a successful send,
-    // so a failed send leaves no trace and can be retried freely.
-    const { data: alreadySent } = await supabase
-      .from('notification_log')
-      .select('id')
-      .eq('business_id', appt.business_id)
-      .eq('ref_id', appt.id)
-      .eq('type', 'confirm')
-      .eq('channel', 'email')
-      .maybeSingle()
-
-    if (alreadySent) {
-      return NextResponse.json({ sent: true, email: 'skipped: already sent' })
     }
 
     const calendarUrl = buildGCalUrlFromISO({
@@ -216,30 +219,44 @@ export async function POST(req: NextRequest) {
       address: biz?.address ?? null,
     })
 
-    await sendBookingConfirmation({
-      to: recipientEmail,
-      clientName: client?.name ?? 'Guest',
-      businessName: biz?.name ?? 'Your appointment',
-      serviceName: service?.name ?? '—',
-      date,
-      time,
-      employeeName: employee?.name ?? undefined,
-      address: biz?.address ?? undefined,
-      calendarUrl,
-    })
+    let sentCount = 0
+    for (const recipient of recipientsWithEmail) {
+      const recipientRef = `${appt.id}:${recipient.email}`
+      const { data: alreadySent } = await supabase
+        .from('notification_log')
+        .select('id')
+        .eq('business_id', appt.business_id)
+        .eq('ref_id', recipientRef)
+        .eq('type', 'confirm')
+        .eq('channel', 'email')
+        .maybeSingle()
+      if (alreadySent) continue
 
-    // Record only after a confirmed successful send
-    const { error: logErr } = await supabase.from('notification_log').insert({
-      business_id: appt.business_id,
-      ref_id: appt.id,
-      type: 'confirm',
-      channel: 'email',
-    })
-    if (logErr && logErr.code !== '23505') {
-      console.error('[email/confirm] notification_log insert error:', logErr.message)
+      await sendBookingConfirmation({
+        to: recipient.email!,
+        clientName: recipient.name ?? 'Guest',
+        businessName: biz?.name ?? 'Your appointment',
+        serviceName: service?.name ?? '—',
+        date,
+        time,
+        employeeName: employee?.name ?? undefined,
+        address: biz?.address ?? undefined,
+        calendarUrl,
+      })
+      sentCount++
+
+      const { error: logErr } = await supabase.from('notification_log').insert({
+        business_id: appt.business_id,
+        ref_id: recipientRef,
+        type: 'confirm',
+        channel: 'email',
+      })
+      if (logErr && logErr.code !== '23505') {
+        console.error('[email/confirm] notification_log insert error:', logErr.message)
+      }
     }
 
-    return NextResponse.json({ sent: true })
+    return NextResponse.json({ sent: true, emailCount: sentCount })
   } catch (err) {
     console.error('[email/confirm]', err)
     return NextResponse.json({ error: 'internal' }, { status: 500 })

@@ -12,6 +12,7 @@ import { computeEffectiveHours, type DayHours } from '@/lib/booking-availability
 interface Service { id: string; name: string; description: string | null; price: number; duration_min: number; category: string | null; capacity: number }
 interface Employee { id: string; name: string }
 interface Business { id: string; name: string; currency: string; slug: string; timezone: string | null; address?: string | null }
+type Contact = { name: string; phone: string; email: string }
 
 interface Props {
   business: Business
@@ -99,7 +100,8 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   const [selectedEmployee, setSelectedEmployee] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
-  const [contact, setContact] = useState({ name: '', phone: '', email: '' })
+  const [contact, setContact] = useState<Contact>({ name: '', phone: '', email: '' })
+  const [additionalContacts, setAdditionalContacts] = useState<Contact[]>([])
   const [saving, setSaving] = useState(false)
   const [slotTakenError, setSlotTakenError] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
@@ -213,16 +215,17 @@ export function PublicBookingForm({ business, services, employees, workingHours,
   }
 
   async function submit() {
-    if (!selectedService || !date || !time || !contact.name) return
-    if (!contact.phone && !contact.email) {
+    if (!selectedService || !date || !time || !contact.name || additionalContacts.some((participant) => !participant.name.trim())) return
+    const allContacts = [contact, ...additionalContacts]
+    if (allContacts.some((participant) => !participant.phone && !participant.email)) {
       setBookingError('Please enter at least a phone number or email so we can confirm your booking.')
       return
     }
-    if (contact.phone && !/^[\d\s\+\-\(\)\.]{7,}$/.test(contact.phone)) {
+    if (allContacts.some((participant) => participant.phone && !/^[\d\s\+\-\(\)\.]{7,}$/.test(participant.phone))) {
       setBookingError('Please enter a valid phone number (digits only, e.g. +1 234 567 8900).')
       return
     }
-    if (contact.email && !contact.email.includes('@')) {
+    if (allContacts.some((participant) => participant.email && !participant.email.includes('@'))) {
       setBookingError('Please enter a valid email address (e.g. name@example.com).')
       return
     }
@@ -243,6 +246,11 @@ export function PublicBookingForm({ business, services, employees, workingHours,
           name:  contact.name,
           phone: contact.phone || null,
           email: contact.email || null,
+          participants: additionalContacts.map((participant) => ({
+            name: participant.name,
+            phone: participant.phone || null,
+            email: participant.email || null,
+          })),
         }),
       })
 
@@ -300,6 +308,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
     setDate('')
     setTime('')
     setContact({ name: '', phone: '', email: '' })
+    setAdditionalContacts([])
     setAvailableSlots([])
     setClientId(null)
     setClientHasTelegram(false)
@@ -563,6 +572,56 @@ export function PublicBookingForm({ business, services, employees, workingHours,
             ))}
           </div>
 
+          {additionalContacts.map((participant, index) => (
+            <div key={index} style={{ marginTop: 18, padding: 14, border: '1px solid #dfe2f0', borderRadius: 10, background: '#fbfbfe' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 13, fontWeight: 650, color: '#182039' }}>Participante {index + 2}</span>
+                <button
+                  type="button"
+                  onClick={() => setAdditionalContacts((current) => current.filter((_, i) => i !== index))}
+                  style={{ border: 'none', background: 'none', color: '#69738f', fontSize: 12, cursor: 'pointer', padding: 0 }}
+                >
+                  Quitar
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <input
+                  value={participant.name}
+                  onChange={(e) => setAdditionalContacts((current) => current.map((item, i) => i === index ? { ...item, name: e.target.value } : item))}
+                  placeholder="Nombre completo"
+                  aria-label={`Nombre del participante ${index + 2}`}
+                  style={{ border: '1px solid #dfe2f0', borderRadius: 9, padding: '10px 13px', fontSize: 14, color: '#182039', width: '100%', background: 'white', outline: 'none', boxSizing: 'border-box' }}
+                />
+                <input
+                  type="tel"
+                  value={participant.phone}
+                  onChange={(e) => setAdditionalContacts((current) => current.map((item, i) => i === index ? { ...item, phone: e.target.value } : item))}
+                  placeholder="Teléfono"
+                  aria-label={`Teléfono del participante ${index + 2}`}
+                  style={{ border: '1px solid #dfe2f0', borderRadius: 9, padding: '10px 13px', fontSize: 14, color: '#182039', width: '100%', background: 'white', outline: 'none', boxSizing: 'border-box' }}
+                />
+                <input
+                  type="email"
+                  value={participant.email}
+                  onChange={(e) => setAdditionalContacts((current) => current.map((item, i) => i === index ? { ...item, email: e.target.value } : item))}
+                  placeholder="Correo electrónico"
+                  aria-label={`Correo del participante ${index + 2}`}
+                  style={{ border: '1px solid #dfe2f0', borderRadius: 9, padding: '10px 13px', fontSize: 14, color: '#182039', width: '100%', background: 'white', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+          ))}
+
+          {additionalContacts.length < 5 && (
+            <button
+              type="button"
+              onClick={() => setAdditionalContacts((current) => [...current, { name: '', phone: '', email: '' }])}
+              style={{ marginTop: 14, width: '100%', border: '1px dashed #b8bfd2', borderRadius: 9, padding: '10px 14px', background: 'white', color: 'var(--brand)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              + Agregar otro participante
+            </button>
+          )}
+
           {bookingError && (
             <div style={{ marginTop: 16, padding: 12, background: '#FFF0F0', border: '0.5px solid #F5AAAA', borderRadius: 10, fontSize: 13, color: '#B00020' }}>
               {bookingError}
@@ -571,9 +630,9 @@ export function PublicBookingForm({ business, services, employees, workingHours,
 
           <button
             onClick={submit}
-            disabled={!contact.name || saving}
+            disabled={!contact.name || additionalContacts.some((participant) => !participant.name.trim()) || saving}
             style={{
-              background: (!contact.name || saving) ? '#b8bfd2' : 'var(--brand)',
+              background: (!contact.name || additionalContacts.some((participant) => !participant.name.trim()) || saving) ? '#b8bfd2' : 'var(--brand)',
               color: 'white',
               border: 'none',
               borderRadius: 10,
@@ -582,7 +641,7 @@ export function PublicBookingForm({ business, services, employees, workingHours,
               fontWeight: 500,
               width: '100%',
               marginTop: 16,
-              cursor: (!contact.name || saving) ? 'not-allowed' : 'pointer',
+              cursor: (!contact.name || additionalContacts.some((participant) => !participant.name.trim()) || saving) ? 'not-allowed' : 'pointer',
             }}
           >
             {saving ? t('contact.booking') : t('contact.confirm', { price: formatCurrency(selectedService?.price ?? 0, business.currency) })}

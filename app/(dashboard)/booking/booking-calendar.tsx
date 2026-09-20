@@ -210,7 +210,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   const is12h = uses12HourClock(locale)
 
   // hour/minute always stored in 24h internally; period only used when is12h
-  const [form, setForm] = useState({ client_id: '', employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM' as 'AM' | 'PM', status: 'pending', notes: '' })
+  const [form, setForm] = useState({ client_id: '', client_ids: [] as string[], employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM' as 'AM' | 'PM', status: 'pending', notes: '' })
 
   async function openForm(prefill?: Partial<typeof form>) {
     const { data } = await supabase
@@ -376,17 +376,30 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     const service = services.find((s) => s.id === form.service_id)!
     const endsAt = new Date(startsAt.getTime() + service.duration_min * 60000)
 
+    const selectedClientIds = form.client_ids.length > 0 ? form.client_ids : (form.client_id ? [form.client_id] : [])
+    const primaryClientId = selectedClientIds[0] || null
     const { data, error } = await supabase.from('appointments').insert({
-      business_id: businessId, client_id: form.client_id || null, employee_id: form.employee_id || null,
+      business_id: businessId, client_id: primaryClientId, employee_id: form.employee_id || null,
       service_id: form.service_id, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(),
       notes: form.notes ? form.notes.trim() || null : null, price: service.price, status: form.status, source: 'manual',
     }).select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)').single()
 
     if (!error && data) {
+      if (selectedClientIds.length > 0) {
+        const { error: participantError } = await supabase.from('appointment_clients').insert(
+          selectedClientIds.map((clientId) => ({ appointment_id: data.id, client_id: clientId }))
+        )
+        if (participantError) {
+          await supabase.from('appointments').delete().eq('id', data.id)
+          setFormError('Failed to save the appointment participants. Please try again.')
+          setSaving(false)
+          return
+        }
+      }
       setAppointments((prev) => [...prev, data as Appointment])
       setShowForm(false)
       setFormError(null)
-      setForm({ client_id: '', employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM', status: 'pending', notes: '' })
+      setForm({ client_id: '', client_ids: [], employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM', status: 'pending', notes: '' })
       router.refresh()
       if (form.status === 'confirmed') {
         triggerBookingConfirmation(data.id).catch(() => {/* non-critical */})
@@ -710,11 +723,15 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
               </div>
               <div>
                 <label className="text-xs text-gray-500 font-medium">{t('form.clientLabel')}</label>
-                <select value={form.client_id} onChange={(e) => setForm((f) => ({ ...f, client_id: e.target.value }))}
+                <select
+                  multiple
+                  value={form.client_ids}
+                  onChange={(e) => setForm((f) => ({ ...f, client_ids: Array.from(e.target.selectedOptions, (option) => option.value), client_id: '' }))}
                   className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">{t('walkIn')}</option>
+                  <option value="">{t('walkIn')} (no client)</option>
                   {clientsList.map((c) => <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ''}</option>)}
                 </select>
+                <p className="mt-1 text-xs text-gray-400">Select one or more clients for this appointment.</p>
               </div>
               {employees.length > 0 && (
                 <div>

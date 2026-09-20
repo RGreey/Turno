@@ -380,6 +380,42 @@ export type Database = {
           }
         ]
       }
+      appointment_clients: {
+        Row: {
+          id: string
+          appointment_id: string
+          client_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          appointment_id: string
+          client_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          appointment_id?: string
+          client_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_clients_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_clients_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       transactions: {
         Row: {
           id: string
