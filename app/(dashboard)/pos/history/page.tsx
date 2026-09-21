@@ -23,7 +23,7 @@ export default async function TransactionHistoryPage(
 
   let query = supabase
     .from('transactions')
-    .select('id, receipt_number, amount, payment_method, status, items, created_at, clients(id, name), employees(name)')
+    .select('id, receipt_number, amount, payment_method, status, items, created_at, appointment_id, clients(id, name), employees(name), appointments(starts_at)')
     .eq('business_id', business.id)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
@@ -126,10 +126,14 @@ export default async function TransactionHistoryPage(
                   const extraCount = items.length - 1
                   const client = tx.clients as { id: string; name: string } | null
                   const employee = tx.employees as { name: string } | null
+                  const appointment = tx.appointments as { starts_at: string } | null
 
                   return (
                     <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
-                      <td className="px-4 py-3 font-mono text-xs text-gray-500">{tx.receipt_number}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                        <div>{tx.receipt_number}</div>
+                        {appointment && <div className="mt-1 font-sans text-[10px] text-blue-600">Reserva · {formatInBusinessTimezone(appointment.starts_at, business.timezone, 'time')}</div>}
+                      </td>
                       <td className="px-4 py-3">
                         {client
                           ? <Link href={`/crm/${client.id}`} className="font-medium text-gray-900 hover:text-blue-600">{client.name}</Link>

@@ -30,6 +30,7 @@ interface Appointment {
 }
 
 interface ClientOption { id: string; name: string; phone?: string | null }
+export interface ChargeItem { id: string; appointment_id: string; client_id: string; amount: number; status: 'pending' | 'paid' | 'exempt'; payment_method: string | null; paid_at: string | null }
 
 /** Get year/month/day/hour of a UTC ISO timestamp in the given IANA timezone. */
 function apptTzParts(iso: string, tz: string): { year: number; month: number; day: number; hour: number; minute: number } {
@@ -117,6 +118,7 @@ interface BusinessHour { day_of_week: number; is_open: boolean; open_time: strin
 interface Props {
   businessId: string; slug: string; timezone: string
   appointments: Appointment[]; employees: Employee[]; services: Service[]; clients: Client[]
+  chargeItems: ChargeItem[]
   businessHours: BusinessHour[]
 }
 
@@ -170,7 +172,7 @@ function getMonday(date: Date) {
   return d
 }
 
-export function BookingCalendar({ businessId, slug, timezone, appointments: initial, employees, services, clients: initialClients, businessHours }: Props) {
+export function BookingCalendar({ businessId, slug, timezone, appointments: initial, employees, services, clients: initialClients, chargeItems, businessHours }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const t = useTranslations('booking')
@@ -268,6 +270,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
   const [saving, setSaving] = useState(false)
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null)
   const [detailParticipantIds, setDetailParticipantIds] = useState<string[]>([])
+  const [showChargeSelector, setShowChargeSelector] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [draggedAppt, setDraggedAppt] = useState<Appointment | null>(null)
   const [assignError, setAssignError] = useState<string | null>(null)
@@ -281,6 +284,31 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
       .select('client_id')
       .eq('appointment_id', appointment.id)
     setDetailParticipantIds(data?.map((participant) => participant.client_id) ?? (appointment.clients?.id ? [appointment.clients.id] : []))
+  }
+
+  function chargeItemsFor(appointmentId: string) {
+    return chargeItems.filter((item) => item.appointment_id === appointmentId)
+  }
+
+  function openChargeFor(clientIds: string[], split = false) {
+    if (!selectedAppt) return
+    const params = new URLSearchParams({ bookingId: selectedAppt.id })
+    if (clientIds.length > 0) params.set('chargeClientIds', clientIds.join(','))
+    if (split) params.set('split', '1')
+    if (selectedAppt.services?.id) params.set('serviceId', selectedAppt.services.id)
+    if (selectedAppt.employees?.id) params.set('staffId', selectedAppt.employees.id)
+    router.push(`/pos?${params.toString()}`)
+  }
+
+  async function exemptParticipant(clientId: string) {
+    if (!selectedAppt) return
+    const item = chargeItemsFor(selectedAppt.id).find((chargeItem) => chargeItem.client_id === clientId)
+    if (!item) return
+    await supabase.from('appointment_charge_items').update({ status: 'exempt', paid_at: new Date().toISOString() }).eq('id', item.id)
+    const remaining = chargeItemsFor(selectedAppt.id).filter((chargeItem) => chargeItem.id !== item.id && chargeItem.status === 'pending')
+    if (remaining.length === 0) await supabase.from('appointments').update({ status: 'paid' }).eq('id', selectedAppt.id)
+    setShowChargeSelector(false)
+    router.refresh()
   }
 
   // day_of_week: 0=Sun, 1=Mon … 6=Sat (JS getDay() convention)
@@ -676,6 +704,11 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                                     {SOURCE_BADGE[a.source].label}
                                   </span>
                                 )}
+                                {chargeItemsFor(a.id).length > 1 && (() => {
+                                  const items = chargeItemsFor(a.id)
+                                  const settled = items.filter((item) => item.status !== 'pending').length
+                                  return <span className="ml-1 text-[9px] font-medium">{settled === items.length ? 'Pagada' : settled > 0 ? `Parcial ${settled}/${items.length}` : 'Pendiente'}</span>
+                                })()}
                               </div>
                             </DraggableAppt>
                           )
@@ -878,12 +911,34 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
               )}
             </div>
             <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <div className="mb-2 text-xs font-medium uppercase text-gray-400">Participantes ({detailParticipantIds.length})</div>
+              {(() => {
+                const items = chargeItemsFor(selectedAppt.id)
+                const paid = items.filter((item) => item.status === 'paid').length
+                const exempt = items.filter((item) => item.status === 'exempt').length
+                const settled = paid + exempt
+                return (
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-xs font-medium uppercase text-gray-400">Participantes ({detailParticipantIds.length})</div>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${settled === 0 ? 'bg-amber-100 text-amber-800' : settled === items.length ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {settled === 0 || items.length === 0 ? 'Pendiente' : settled === items.length ? 'Pagada' : `Parcial (${settled}/${items.length})`}
+                    </span>
+                  </div>
+                )
+              })()}
               {detailParticipantIds.length > 0 ? (
                 <div className="space-y-1">
                   {detailParticipantIds.map((clientId) => {
                     const client = clientsList.find((item) => item.id === clientId)
-                    return <div key={clientId} className="rounded-md bg-violet-100 px-3 py-2 text-sm text-violet-900">{client?.name ?? 'Cliente'}</div>
+                    const item = chargeItemsFor(selectedAppt.id).find((chargeItem) => chargeItem.client_id === clientId)
+                    const status = item?.status ?? 'pending'
+                    return (
+                      <div key={clientId} className="flex items-center justify-between gap-2 rounded-md bg-violet-100 px-3 py-2 text-sm text-violet-900">
+                        <span>{client?.name ?? 'Cliente'}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${status === 'paid' ? 'bg-emerald-200 text-emerald-900' : status === 'exempt' ? 'bg-gray-200 text-gray-700' : 'bg-amber-200 text-amber-900'}`}>
+                          {status === 'paid' ? 'Pagado' : status === 'exempt' ? 'Exento' : 'Pendiente'}
+                        </span>
+                      </div>
+                    )
                   })}
                 </div>
               ) : (
@@ -929,15 +984,48 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
               <Button
                 className="w-full mb-2 gap-2"
                 onClick={() => {
-                  const params = new URLSearchParams({ bookingId: selectedAppt.id })
-                  if (selectedAppt.services?.id) params.set('serviceId', selectedAppt.services.id)
-                  if (selectedAppt.employees?.id) params.set('staffId', selectedAppt.employees.id)
-                  router.push(`/pos?${params.toString()}`)
+                  if (detailParticipantIds.length > 1) setShowChargeSelector(true)
+                  else openChargeFor(detailParticipantIds)
                 }}
               >
                 <CreditCard className="w-4 h-4" />
                 {t('detail.chargeButton')}
               </Button>
+            )}
+            {showChargeSelector && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+                <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+                  <div className="mb-1 flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-900">Selecciona a quién cobrar</h3>
+                    <button onClick={() => setShowChargeSelector(false)} className="text-gray-400 hover:text-gray-700">×</button>
+                  </div>
+                  <p className="mb-4 text-xs text-gray-500">Puedes cobrar uno ahora y volver después por los pendientes.</p>
+                  <div className="space-y-2">
+                    {detailParticipantIds.map((clientId) => {
+                      const client = clientsList.find((item) => item.id === clientId)
+                      const item = chargeItemsFor(selectedAppt.id).find((chargeItem) => chargeItem.client_id === clientId)
+                      const disabled = item?.status !== 'pending'
+                      return (
+                        <button key={clientId} disabled={disabled} onClick={() => openChargeFor([clientId])} className="flex w-full items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-left text-sm hover:border-blue-400 disabled:cursor-not-allowed disabled:opacity-50">
+                          <span>{client?.name ?? 'Cliente'}</span>
+                          <span>{disabled ? (item?.status === 'paid' ? 'Pagado' : 'Exento') : 'Cobrar'}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <Button onClick={() => openChargeFor(detailParticipantIds.filter((clientId) => chargeItemsFor(selectedAppt.id).find((item) => item.client_id === clientId)?.status === 'pending'))}>Cobrar pendientes</Button>
+                    <Button variant="outline" onClick={() => openChargeFor(detailParticipantIds.filter((clientId) => chargeItemsFor(selectedAppt.id).find((item) => item.client_id === clientId)?.status === 'pending'), true)}>Dividir cuenta</Button>
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    {detailParticipantIds.filter((clientId) => chargeItemsFor(selectedAppt.id).find((item) => item.client_id === clientId)?.status === 'pending').map((clientId) => (
+                      <button key={`exempt-${clientId}`} onClick={() => exemptParticipant(clientId)} className="w-full rounded-lg px-3 py-2 text-xs text-gray-500 hover:bg-gray-100">
+                        Marcar como exento: {clientsList.find((client) => client.id === clientId)?.name ?? 'Cliente'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
             {confirmDelete ? (
               <div className="rounded-xl border border-red-200 bg-red-50 p-3 mb-2">

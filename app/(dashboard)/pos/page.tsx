@@ -11,9 +11,10 @@ import { getBusinessForOwner } from '@/lib/business'
 
 interface SearchParams {
   bookingId?: string
-  clientId?: string
   serviceId?: string
   staffId?: string
+  chargeClientIds?: string
+  split?: string
 }
 
 export default async function POSPage(props: { searchParams: Promise<SearchParams> }) {
@@ -59,6 +60,9 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
     clientId: string
     clientIds: string[]
     clientNames: string[]
+    chargeClientIds: string[]
+    chargeItemIds: string[]
+    split: boolean
     serviceId: string
     staffId: string
     label: string
@@ -85,11 +89,23 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
       const legacyClient = appt.clients as { id?: string; name: string } | null
       const clientIds = participants.length > 0
         ? participants.map((participant) => participant.id)
-        : (searchParams.clientId || legacyClient?.id ? [searchParams.clientId ?? legacyClient!.id!] : [])
+        : (legacyClient?.id ? [legacyClient.id] : [])
       const clientNames = participants.length > 0
         ? participants.map((participant) => participant.name)
         : [legacyClient?.name ?? 'Walk-in']
       const clientName = clientNames[0] ?? 'Walk-in'
+      const selectedClientIds = searchParams.chargeClientIds?.split(',').filter(Boolean)
+      const chargeRows = await supabase
+        .from('appointment_charge_items')
+        .select('id, client_id, status')
+        .eq('appointment_id', appt.id)
+      const pendingChargeRows = ((chargeRows.data ?? []) as Array<{ id: string; client_id: string; status: string }>)
+        .filter((item) => !selectedClientIds || selectedClientIds.includes(item.client_id))
+        .filter((item) => item.status === 'pending')
+      const pendingByClient = new Map(pendingChargeRows.map((item) => [item.client_id, item]))
+      const orderedPendingRows = clientIds.filter((clientId) => pendingByClient.has(clientId)).map((clientId) => pendingByClient.get(clientId)!)
+      const chargeClientIds = orderedPendingRows.map((item) => item.client_id)
+      const chargeItemIds = orderedPendingRows.map((item) => item.id)
       const serviceName = (appt.services as { name: string } | null)?.name ?? ''
       const tz = business.timezone ?? 'UTC'
       bookingContext = {
@@ -97,6 +113,9 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
         clientId: clientIds[0] ?? '',
         clientIds,
         clientNames,
+        chargeClientIds,
+        chargeItemIds,
+        split: searchParams.split === '1',
         serviceId: searchParams.serviceId ?? '',
         staffId: searchParams.staffId ?? (appt.employees as { id: string; name: string } | null)?.id ?? '',
         label: `${clientName} — ${serviceName} — ${formatInBusinessTimezone(appt.starts_at, tz, 'time')}`,

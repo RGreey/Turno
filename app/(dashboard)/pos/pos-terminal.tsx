@@ -43,6 +43,9 @@ interface BookingContext {
   clientId: string
   clientIds: string[]
   clientNames: string[]
+  chargeClientIds: string[]
+  chargeItemIds: string[]
+  split: boolean
   serviceId: string
   staffId: string
   label: string
@@ -283,8 +286,12 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
         // ── Online: normal Supabase insert ────────────────────────────────
         const wasWalkin = !selectedClient
         const bookingClientIds = bookingContext?.clientIds ?? []
+        const selectedChargeClientIds = bookingContext?.chargeClientIds ?? []
+        const selectedChargeItemIds = bookingContext?.chargeItemIds ?? []
         const clientsToCharge = activeBookingId && bookingClientIds.length > 0
-          ? bookingClientIds
+          ? selectedChargeItemIds.length > 0
+            ? bookingClientIds.filter((clientId) => selectedChargeClientIds.includes(clientId))
+            : bookingClientIds
           : [selectedClient || null]
         const serviceItems = items.filter((item) => item.service_id)
         const productItems = items.filter((item) => item.item_id)
@@ -292,12 +299,15 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
         const productTotal = productItems.reduce((sum, item) => sum + item.price * item.qty, 0)
         const serviceDiscount = serviceTotal > 0 ? Math.min(discount, serviceTotal) : 0
         const productDiscount = Math.max(0, discount - serviceDiscount)
+        const shouldSplit = bookingContext?.split === true
+        const splitTotal = Math.max(0, total) / Math.max(1, clientsToCharge.length)
         const transactionPayloads = clientsToCharge.map((clientId, index) => {
-          const clientServiceTotal = Math.max(0, serviceTotal - (index === 0 ? serviceDiscount : 0))
-          const clientProductTotal = index === 0 ? Math.max(0, productTotal - productDiscount) : 0
+          const clientServiceTotal = shouldSplit ? splitTotal : Math.max(0, serviceTotal - (index === 0 ? serviceDiscount : 0))
+          const clientProductTotal = shouldSplit ? 0 : index === 0 ? Math.max(0, productTotal - productDiscount) : 0
           return {
             business_id: businessId,
             appointment_id: activeBookingId || null,
+            charge_item_id: selectedChargeItemIds[index] ?? null,
             client_id: clientId,
             employee_id: selectedEmployee || null,
             amount: clientServiceTotal + clientProductTotal,
@@ -313,6 +323,15 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
 
         if (error) throw error
         chargedAmount = transactionPayloads.reduce((sum, transaction) => sum + transaction.amount, 0)
+        if (activeBookingId && selectedChargeItemIds.length > 0) {
+          for (const [index, chargeItemId] of selectedChargeItemIds.entries()) {
+            const { error: chargeError } = await supabase
+              .from('appointment_charge_items')
+              .update({ status: 'paid', amount: transactionPayloads[index]?.amount ?? 0, payment_method: paymentMethod, paid_at: new Date().toISOString() })
+              .eq('id', chargeItemId)
+            if (chargeError) throw chargeError
+          }
+        }
 
         for (const item of items) {
           if (!item.item_id) continue
@@ -330,13 +349,20 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
 
         // ── If came from Booking: mark appointment as paid ────────────────
         if (activeBookingId) {
-          supabase
-            .from('appointments')
-            .update({ status: 'paid' })
-            .eq('id', activeBookingId)
-            .then(({ error: apptErr }) => {
-              if (apptErr) console.error('[POS] Failed to update booking status:', apptErr)
-            })
+          const { data: chargeRows } = await supabase
+            .from('appointment_charge_items')
+            .select('status')
+            .eq('appointment_id', activeBookingId)
+          const allSettled = chargeRows && chargeRows.length > 0 && chargeRows.every((row: { status: string }) => row.status === 'paid' || row.status === 'exempt')
+          if (allSettled) {
+            supabase
+              .from('appointments')
+              .update({ status: 'paid' })
+              .eq('id', activeBookingId)
+              .then(({ error: apptErr }) => {
+                if (apptErr) console.error('[POS] Failed to update booking status:', apptErr)
+              })
+          }
         }
 
         if (wasWalkin && data?.[0]?.id) {

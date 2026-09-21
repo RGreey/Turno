@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/layout/header'
-import { BookingCalendar } from './booking-calendar'
+import { BookingCalendar, type ChargeItem } from './booking-calendar'
 import { getAuthUser } from '@/lib/auth-user'
 import { getBusinessForOwner } from '@/lib/business'
 
@@ -50,6 +50,10 @@ export default async function BookingPage() {
         .eq('business_id', business.id),
     ])
 
+  const { data: chargeItems } = await supabase
+    .from('appointment_charge_items')
+    .select('id, appointment_id, client_id, amount, status, payment_method, paid_at')
+
   return (
     <>
       <Header title="Booking" />
@@ -61,6 +65,7 @@ export default async function BookingPage() {
         employees={employees ?? []}
         services={services ?? []}
         clients={clients ?? []}
+        chargeItems={(chargeItems ?? []) as ChargeItem[]}
         businessHours={businessHours ?? []}
       />
     </>

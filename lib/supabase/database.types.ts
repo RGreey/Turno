@@ -416,11 +416,60 @@ export type Database = {
           }
         ]
       }
+      appointment_charge_items: {
+        Row: {
+          id: string
+          appointment_id: string
+          client_id: string
+          amount: number
+          status: string
+          payment_method: string | null
+          paid_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          appointment_id: string
+          client_id: string
+          amount?: number
+          status?: string
+          payment_method?: string | null
+          paid_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          appointment_id?: string
+          client_id?: string
+          amount?: number
+          status?: string
+          payment_method?: string | null
+          paid_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_charge_items_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_charge_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       transactions: {
         Row: {
           id: string
           business_id: string
           appointment_id: string | null
+          charge_item_id: string | null
           client_id: string | null
           employee_id: string | null
           amount: number
@@ -434,6 +483,7 @@ export type Database = {
           id?: string
           business_id: string
           appointment_id?: string | null
+          charge_item_id?: string | null
           client_id?: string | null
           employee_id?: string | null
           amount: number
@@ -447,6 +497,7 @@ export type Database = {
           id?: string
           business_id?: string
           appointment_id?: string | null
+          charge_item_id?: string | null
           client_id?: string | null
           employee_id?: string | null
           amount?: number
