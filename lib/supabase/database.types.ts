@@ -306,6 +306,7 @@ export type Database = {
       appointments: {
         Row: {
           id: string
+          booking_number: number | null
           business_id: string
           client_id: string | null
           employee_id: string | null
@@ -321,6 +322,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          booking_number?: number | null
           business_id: string
           client_id?: string | null
           employee_id?: string | null
@@ -336,6 +338,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          booking_number?: number | null
           business_id?: string
           client_id?: string | null
           employee_id?: string | null

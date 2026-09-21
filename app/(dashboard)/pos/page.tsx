@@ -57,6 +57,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
   // ── Booking context: prefill POS from an appointment ──────────────────────
   let bookingContext: {
     bookingId: string
+    bookingNumber: number | null
     clientId: string
     clientIds: string[]
     clientNames: string[]
@@ -71,7 +72,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
   if (searchParams.bookingId) {
     const { data: appt } = await supabase
       .from('appointments')
-      .select('id, starts_at, clients(id, name), services(name), employees(id, name)')
+      .select('id, booking_number, starts_at, clients(id, name), services(name), employees(id, name)')
       .eq('id', searchParams.bookingId)
       .eq('business_id', business.id) // security: only own business
       .maybeSingle()
@@ -110,6 +111,7 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
       const tz = business.timezone ?? 'UTC'
       bookingContext = {
         bookingId: appt.id,
+        bookingNumber: appt.booking_number,
         clientId: clientIds[0] ?? '',
         clientIds,
         clientNames,

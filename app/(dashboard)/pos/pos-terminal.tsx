@@ -40,6 +40,7 @@ type PaymentMethod = 'cash' | 'card' | 'transfer'
 
 interface BookingContext {
   bookingId: string
+  bookingNumber: number | null
   clientId: string
   clientIds: string[]
   clientNames: string[]
@@ -532,7 +533,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
         <div className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 border-b border-indigo-200 text-indigo-900 text-sm">
           <CalendarDays className="w-4 h-4 shrink-0 text-indigo-500" />
           <span>
-            {t('bookingBanner')} <strong>#{bookingContext.bookingId.slice(0, 8)}</strong> · {bookingContext.label}
+            {t('bookingBanner')} <strong>Reserva #{bookingContext.bookingNumber ?? '—'}</strong> · {bookingContext.label}
             {bookingContext.clientNames.length > 1 ? ` · ${bookingContext.clientNames.length} clients` : ''}
           </span>
         </div>

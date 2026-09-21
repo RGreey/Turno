@@ -23,7 +23,7 @@ import {
 } from '@dnd-kit/core'
 
 interface Appointment {
-  id: string; starts_at: string; ends_at: string; status: string; source: string | null; notes: string | null
+  id: string; booking_number: number | null; starts_at: string; ends_at: string; status: string; source: string | null; notes: string | null
   clients: { id: string; name: string } | null
   employees: { id: string; name: string } | null
   services: { id: string; name: string; price: number } | null

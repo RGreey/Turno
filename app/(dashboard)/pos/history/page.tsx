@@ -23,7 +23,7 @@ export default async function TransactionHistoryPage(
 
   let query = supabase
     .from('transactions')
-    .select('id, receipt_number, amount, payment_method, status, items, created_at, appointment_id, clients(id, name), employees(name), appointments(starts_at)')
+    .select('id, receipt_number, amount, payment_method, status, items, created_at, appointment_id, clients(id, name), employees(name), appointments(booking_number, starts_at)')
     .eq('business_id', business.id)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
@@ -126,7 +126,7 @@ export default async function TransactionHistoryPage(
                   const extraCount = items.length - 1
                   const client = tx.clients as { id: string; name: string } | null
                   const employee = tx.employees as { name: string } | null
-                  const appointment = tx.appointments as { starts_at: string } | null
+                  const appointment = tx.appointments as { booking_number: number | null; starts_at: string } | null
 
                   return (
                     <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
@@ -137,7 +137,7 @@ export default async function TransactionHistoryPage(
                             className="mt-1 font-sans text-[10px] text-blue-600"
                             title={`Reserva completa: ${tx.appointment_id}`}
                           >
-                            Reserva #{tx.appointment_id.slice(0, 8)}
+                            Reserva #{appointment?.booking_number ?? tx.appointment_id.slice(0, 8)}
                             {appointment && ` · ${formatInBusinessTimezone(appointment.starts_at, business.timezone, 'time')}`}
                           </div>
                         )}
