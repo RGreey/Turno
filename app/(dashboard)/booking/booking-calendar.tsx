@@ -930,7 +930,6 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                 className="w-full mb-2 gap-2"
                 onClick={() => {
                   const params = new URLSearchParams({ bookingId: selectedAppt.id })
-                  if (selectedAppt.clients?.id) params.set('clientId', selectedAppt.clients.id)
                   if (selectedAppt.services?.id) params.set('serviceId', selectedAppt.services.id)
                   if (selectedAppt.employees?.id) params.set('staffId', selectedAppt.employees.id)
                   router.push(`/pos?${params.toString()}`)

@@ -41,6 +41,8 @@ type PaymentMethod = 'cash' | 'card' | 'transfer'
 interface BookingContext {
   bookingId: string
   clientId: string
+  clientIds: string[]
+  clientNames: string[]
   serviceId: string
   staffId: string
   label: string
@@ -264,6 +266,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
     }))
 
     try {
+      let chargedAmount = total
       if (!isOnline) {
         // ── Offline: save to IndexedDB queue ──────────────────────────────
         const queued = await queueTransaction({
@@ -279,21 +282,37 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
       } else {
         // ── Online: normal Supabase insert ────────────────────────────────
         const wasWalkin = !selectedClient
-        const { data, error } = await supabase
-          .from('transactions')
-          .insert({
+        const bookingClientIds = bookingContext?.clientIds ?? []
+        const clientsToCharge = activeBookingId && bookingClientIds.length > 0
+          ? bookingClientIds
+          : [selectedClient || null]
+        const serviceItems = items.filter((item) => item.service_id)
+        const productItems = items.filter((item) => item.item_id)
+        const serviceTotal = serviceItems.reduce((sum, item) => sum + item.price * item.qty, 0)
+        const productTotal = productItems.reduce((sum, item) => sum + item.price * item.qty, 0)
+        const serviceDiscount = serviceTotal > 0 ? Math.min(discount, serviceTotal) : 0
+        const productDiscount = Math.max(0, discount - serviceDiscount)
+        const transactionPayloads = clientsToCharge.map((clientId, index) => {
+          const clientServiceTotal = Math.max(0, serviceTotal - (index === 0 ? serviceDiscount : 0))
+          const clientProductTotal = index === 0 ? Math.max(0, productTotal - productDiscount) : 0
+          return {
             business_id: businessId,
-            client_id: selectedClient || null,
+            appointment_id: activeBookingId || null,
+            client_id: clientId,
             employee_id: selectedEmployee || null,
-            amount: total,
+            amount: clientServiceTotal + clientProductTotal,
             payment_method: paymentMethod,
             status: 'completed',
-            items,
-          })
+            items: [...serviceItems, ...(index === 0 ? productItems : [])],
+          }
+        })
+        const { data, error } = await supabase
+          .from('transactions')
+          .insert(transactionPayloads)
           .select('receipt_number, id')
-          .single()
 
         if (error) throw error
+        chargedAmount = transactionPayloads.reduce((sum, transaction) => sum + transaction.amount, 0)
 
         for (const item of items) {
           if (!item.item_id) continue
@@ -306,7 +325,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
             .eq('business_id', businessId)
           if (stockError) throw stockError
         }
-        setReceiptNumber(data.receipt_number ?? '')
+        setReceiptNumber(data?.[0]?.receipt_number ?? '')
         router.refresh()
 
         // ── If came from Booking: mark appointment as paid ────────────────
@@ -320,14 +339,14 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
             })
         }
 
-        if (wasWalkin && data.id) {
-          setWalkinTxId(data.id)
+        if (wasWalkin && data?.[0]?.id) {
+          setWalkinTxId(data[0].id)
           setSaveForm({ name: '', phone: '', email: '', notes: '' })
           setShowSaveModal(true)
         }
       }
 
-      setSuccessAmount(total)
+      setSuccessAmount(chargedAmount)
       setSuccess(true)
       setCart([])
       setDiscount(0)
@@ -486,7 +505,7 @@ export function POSTerminal({ businessId, currency, services: initialServices, p
       {showBookingBanner && bookingContext && (
         <div className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 border-b border-indigo-200 text-indigo-900 text-sm">
           <CalendarDays className="w-4 h-4 shrink-0 text-indigo-500" />
-          <span>{t('bookingBanner')} <strong>{bookingContext.label}</strong></span>
+          <span>{t('bookingBanner')} <strong>{bookingContext.label}</strong>{bookingContext.clientNames.length > 1 ? ` · ${bookingContext.clientNames.length} clients` : ''}</span>
         </div>
       )}
 

@@ -57,6 +57,8 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
   let bookingContext: {
     bookingId: string
     clientId: string
+    clientIds: string[]
+    clientNames: string[]
     serviceId: string
     staffId: string
     label: string
@@ -65,18 +67,36 @@ export default async function POSPage(props: { searchParams: Promise<SearchParam
   if (searchParams.bookingId) {
     const { data: appt } = await supabase
       .from('appointments')
-      .select('id, starts_at, clients(name), services(name), employees(id, name)')
+      .select('id, starts_at, clients(id, name), services(name), employees(id, name)')
       .eq('id', searchParams.bookingId)
       .eq('business_id', business.id) // security: only own business
       .maybeSingle()
 
     if (appt) {
-      const clientName = (appt.clients as { name: string } | null)?.name ?? 'Walk-in'
+      const { data: participantRows } = await supabase
+        .from('appointment_clients')
+        .select('client_id, clients(name)')
+        .eq('appointment_id', appt.id)
+
+      const participants = (participantRows ?? []).map((row) => ({
+        id: row.client_id,
+        name: (row.clients as { name: string } | null)?.name ?? 'Cliente',
+      }))
+      const legacyClient = appt.clients as { id?: string; name: string } | null
+      const clientIds = participants.length > 0
+        ? participants.map((participant) => participant.id)
+        : (searchParams.clientId || legacyClient?.id ? [searchParams.clientId ?? legacyClient!.id!] : [])
+      const clientNames = participants.length > 0
+        ? participants.map((participant) => participant.name)
+        : [legacyClient?.name ?? 'Walk-in']
+      const clientName = clientNames[0] ?? 'Walk-in'
       const serviceName = (appt.services as { name: string } | null)?.name ?? ''
       const tz = business.timezone ?? 'UTC'
       bookingContext = {
         bookingId: appt.id,
-        clientId: searchParams.clientId ?? '',
+        clientId: clientIds[0] ?? '',
+        clientIds,
+        clientNames,
         serviceId: searchParams.serviceId ?? '',
         staffId: searchParams.staffId ?? (appt.employees as { id: string; name: string } | null)?.id ?? '',
         label: `${clientName} — ${serviceName} — ${formatInBusinessTimezone(appt.starts_at, tz, 'time')}`,
