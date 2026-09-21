@@ -4,10 +4,11 @@
  * Replaces direct Supabase client calls from booking-form.tsx.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/service'
 import { rateLimit, getIp } from '@/lib/rate-limit'
+import { sendBookingConfirmations } from '@/lib/notifications/booking-confirmation'
 import { computeEffectiveHours, checkSlotWithinHours, dayOfWeekFromDateString } from '@/lib/booking-availability'
 
 function sanitize(s: string): string {
@@ -264,21 +265,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'booking_failed' }, { status: 500 })
   }
 
-  // Trigger notifications (fire-and-forget — non-blocking)
-  fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/email/confirm`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET ?? ''}`,
-    },
-    body: JSON.stringify({ appointmentId: appt.id, formEmail: email || null }),
-  }).then(async (res) => {
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      console.error('[api/book] email/confirm failed:', res.status, text)
+  // Notifications run AFTER the response is sent. after() keeps the serverless
+  // function alive until they finish — a bare un-awaited promise can be frozen
+  // by Vercel as soon as the response returns. Direct call: no HTTP hop, no secret.
+  after(async () => {
+    try {
+      await sendBookingConfirmations(appt.id, email || null)
+    } catch (err) {
+      console.error('[api/book] confirmation error:', err)
     }
-  }).catch((err) => {
-    console.error('[api/book] email/confirm fetch error:', err)
   })
 
   return NextResponse.json({ appointmentId: appt.id, clientId, hasTelegram, hasViber })

@@ -1,30 +1,36 @@
 'use server'
 
-// Esta función corre en el SERVIDOR aunque se llame desde un componente de
-// cliente (booking-calendar.tsx). Por eso sí puede leer INTERNAL_API_SECRET
-// de forma segura: esa variable nunca se envía al navegador.
+import { createClient } from '@/lib/supabase/server'
+import { getAuthUser } from '@/lib/auth-user'
+import { getBusinessForOwner } from '@/lib/business'
+import { sendBookingConfirmations } from '@/lib/notifications/booking-confirmation'
+
+// Corre en el SERVIDOR. Llama directamente a la lógica de envío: sin fetch a
+// /api/email/confirm, sin secreto compartido y sin depender de NEXT_PUBLIC_APP_URL.
 //
-// Reemplaza al fetch() directo que hacía el componente de cliente sin
-// Authorization header, lo cual causaba un 401 permanente en /api/email/confirm.
+// Los server actions son endpoints públicos de facto, así que se verifica que
+// quien llama sea el dueño del negocio al que pertenece la cita.
 export async function triggerBookingConfirmation(appointmentId: string) {
   try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/email/confirm`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.INTERNAL_API_SECRET ?? ''}`,
-        },
-        body: JSON.stringify({ appointmentId }),
-      }
-    )
+    const user = await getAuthUser()
+    if (!user) return { ok: false, error: 'unauthorized' }
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      console.error('[booking/actions] email/confirm failed:', res.status, text)
-    }
+    const business = await getBusinessForOwner(user.id)
+    if (!business) return { ok: false, error: 'no_business' }
+
+    const supabase = await createClient()
+    const { data: appt } = await supabase
+      .from('appointments')
+      .select('id')
+      .eq('id', appointmentId)
+      .eq('business_id', business.id)
+      .maybeSingle()
+    if (!appt) return { ok: false, error: 'not_found' }
+
+    const result = await sendBookingConfirmations(appointmentId)
+    return { ok: result.sent, error: result.sent ? null : result.email }
   } catch (err) {
-    console.error('[booking/actions] email/confirm fetch error:', err)
+    console.error('[booking/actions] confirmation failed:', err)
+    return { ok: false, error: 'internal' }
   }
 }
