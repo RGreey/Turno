@@ -132,7 +132,15 @@ export default async function TransactionHistoryPage(
                     <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50 last:border-0">
                       <td className="px-4 py-3 font-mono text-xs text-gray-500">
                         <div>{tx.receipt_number}</div>
-                        {appointment && <div className="mt-1 font-sans text-[10px] text-blue-600">Reserva · {formatInBusinessTimezone(appointment.starts_at, business.timezone, 'time')}</div>}
+                        {tx.appointment_id && (
+                          <div
+                            className="mt-1 font-sans text-[10px] text-blue-600"
+                            title={`Reserva completa: ${tx.appointment_id}`}
+                          >
+                            Reserva #{tx.appointment_id.slice(0, 8)}
+                            {appointment && ` · ${formatInBusinessTimezone(appointment.starts_at, business.timezone, 'time')}`}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         {client
