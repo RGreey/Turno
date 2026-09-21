@@ -51,6 +51,13 @@ function viberTplConfirmClient(opts: {
 export interface BookingConfirmationResult {
   sent: boolean
   email: string
+  emailCount?: number
+  results?: Array<{ to: string; status: 'sent' | 'already_sent' | 'duplicate_email' | 'failed'; error?: string }>
+}
+
+function maskEmail(email: string): string {
+  const [user, domain] = email.split('@')
+  return `${user.slice(0, 2)}***@${domain ?? ''}`
 }
 
 /**
@@ -78,6 +85,21 @@ export async function sendBookingConfirmations(
 
   if (apptErr) console.error('[email/confirm] appointment fetch error:', apptErr.message)
   if (!appt) return { sent: false, email: 'not_found' }
+
+  const { data: participantRows } = await supabase
+    .from('appointment_clients')
+    .select('client_id, clients(name, email, whatsapp_number, telegram_id, viber_user_id)')
+    .eq('appointment_id', appt.id)
+
+  const participants = (participantRows ?? []).flatMap((row) =>
+    Array.isArray(row.clients) ? row.clients : row.clients ? [row.clients] : []
+  ) as Array<{
+    name: string
+    email: string | null
+    whatsapp_number: string | null
+    telegram_id: string | null
+    viber_user_id: string | null
+  }>
 
   const client = appt.clients as unknown as {
     name: string
@@ -183,27 +205,23 @@ export async function sendBookingConfirmations(
     )
   }
 
-  // ── Email → клиенту ─────────────────────────────────────────────────────
-  // Prefer the email submitted in the booking form (formEmail) over the one stored in DB,
-  // since the DB record may belong to an existing client found by phone who has a different email.
-  const recipientEmail = formEmail || client?.email
-  if (!recipientEmail) {
+  // ── Email → cada participante ───────────────────────────────────────────
+  // Prefer the email submitted in the booking form (formEmail) over the one stored in DB
+  // when there is no participants list (legacy single-client bookings).
+  const emailRecipients = participants.length > 0
+    ? participants
+    : (client ? [{ ...client, email: formEmail || client.email }] : [])
+  const recipientsWithEmail = emailRecipients.filter((participant) => participant.email)
+
+  // Una línea que responde de inmediato: ¿se encontraron los participantes?
+  console.log(
+    `[confirm] appt=${appt.id} participants=${participants.length}` +
+    `${participants.length === 0 ? ' (fallback: cliente principal)' : ''}` +
+    ` withEmail=${recipientsWithEmail.length}`
+  )
+
+  if (recipientsWithEmail.length === 0) {
     return { sent: true, email: 'skipped: no client email' }
-  }
-
-  // Check dedup BEFORE sending — log record is written only after a successful send,
-  // so a failed send leaves no trace and can be retried freely.
-  const { data: alreadySent } = await supabase
-    .from('notification_log')
-    .select('id')
-    .eq('business_id', appt.business_id)
-    .eq('ref_id', appt.id)
-    .eq('type', 'confirm')
-    .eq('channel', 'email')
-    .maybeSingle()
-
-  if (alreadySent) {
-    return { sent: true, email: 'skipped: already sent' }
   }
 
   const calendarUrl = buildGCalUrlFromISO({
@@ -216,28 +234,81 @@ export async function sendBookingConfirmations(
     address: biz?.address ?? null,
   })
 
-  await sendBookingConfirmation({
-    to: recipientEmail,
-    clientName: client?.name ?? 'Guest',
-    businessName: biz?.name ?? 'Your appointment',
-    serviceName: service?.name ?? '—',
-    date,
-    time,
-    employeeName: employee?.name ?? undefined,
-    address: biz?.address ?? undefined,
-    calendarUrl,
-  })
+  const results: NonNullable<BookingConfirmationResult['results']> = []
+  const seenEmails = new Set<string>()
 
-  // Record only after a confirmed successful send
-  const { error: logErr } = await supabase.from('notification_log').insert({
-    business_id: appt.business_id,
-    ref_id: appt.id,
-    type: 'confirm',
-    channel: 'email',
-  })
-  if (logErr && logErr.code !== '23505') {
-    console.error('[email/confirm] notification_log insert error:', logErr.message)
+  for (const recipient of recipientsWithEmail) {
+    const to = recipient.email!
+    const masked = maskEmail(to)
+    const key = to.trim().toLowerCase()
+
+    // Dos participantes con el mismo correo => un solo mensaje (y queda registrado por qué).
+    if (seenEmails.has(key)) {
+      results.push({ to: masked, status: 'duplicate_email' })
+      continue
+    }
+    seenEmails.add(key)
+
+    // Cada destinatario está aislado: si uno falla, los demás igual se envían.
+    try {
+      const recipientRef = `${appt.id}:${to}`
+      const { data: alreadySent } = await supabase
+        .from('notification_log')
+        .select('id')
+        .eq('business_id', appt.business_id)
+        .eq('ref_id', recipientRef)
+        .eq('type', 'confirm')
+        .eq('channel', 'email')
+        .maybeSingle()
+      if (alreadySent) {
+        results.push({ to: masked, status: 'already_sent' })
+        continue
+      }
+
+      const mail = await sendBookingConfirmation({
+        to,
+        clientName: recipient.name ?? 'Guest',
+        businessName: biz?.name ?? 'Your appointment',
+        serviceName: service?.name ?? '—',
+        date,
+        time,
+        employeeName: employee?.name ?? undefined,
+        address: biz?.address ?? undefined,
+        calendarUrl,
+      })
+
+      // sendMail() NUNCA lanza: devuelve { error }. Antes se ignoraba ese resultado,
+      // así que un envío fallido quedaba registrado como enviado y no se reintentaba.
+      if (mail?.error) {
+        results.push({ to: masked, status: 'failed', error: mail.error })
+        continue
+      }
+
+      // Se registra solo tras un envío aceptado por el proveedor
+      const { error: logErr } = await supabase.from('notification_log').insert({
+        business_id: appt.business_id,
+        ref_id: recipientRef,
+        type: 'confirm',
+        channel: 'email',
+      })
+      if (logErr && logErr.code !== '23505') {
+        console.error('[confirm] notification_log insert error:', logErr.message)
+      }
+      results.push({ to: masked, status: 'sent' })
+    } catch (err) {
+      results.push({ to: masked, status: 'failed', error: err instanceof Error ? err.message : String(err) })
+    }
   }
 
-  return { sent: true, email: 'sent' }
+  const sentCount = results.filter((r) => r.status === 'sent').length
+  const failedCount = results.filter((r) => r.status === 'failed').length
+  console.log(`[confirm] appt=${appt.id} email results: ${JSON.stringify(results)}`)
+  if (failedCount > 0) console.error(`[confirm] appt=${appt.id} ${failedCount} email(s) FAILED`)
+
+  return {
+    sent: failedCount === 0,
+    email: failedCount > 0 ? 'failed' : sentCount > 0 ? 'sent' : 'skipped: already sent',
+    emailCount: sentCount,
+    results,
+  }
 }
