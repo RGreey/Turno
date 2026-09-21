@@ -29,14 +29,16 @@ interface Appointment {
   services: { id: string; name: string; price: number } | null
 }
 
+interface ClientOption { id: string; name: string; phone?: string | null }
+
 /** Get year/month/day/hour of a UTC ISO timestamp in the given IANA timezone. */
-function apptTzParts(iso: string, tz: string): { year: number; month: number; day: number; hour: number } {
+function apptTzParts(iso: string, tz: string): { year: number; month: number; day: number; hour: number; minute: number } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: tz,
-    year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', hour12: false,
+    year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: false,
   }).formatToParts(new Date(iso))
   const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? '0')
-  return { year: get('year'), month: get('month'), day: get('day'), hour: get('hour') % 24 }
+  return { year: get('year'), month: get('month'), day: get('day'), hour: get('hour') % 24, minute: get('minute') }
 }
 
 /** Convert a wall-clock date+time in the business timezone to a UTC Date. */
@@ -185,7 +187,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     return `${origin}/book/${slug}`
   }, [slug, origin])
   const [appointments, setAppointments] = useState(initial)
-  const [clientsList, setClientsList] = useState<Client[]>(initialClients)
+  const [clientsList, setClientsList] = useState<ClientOption[]>(initialClients)
 
   // Dynamic hour range: derived from business hours + actual appointment times
   const HOURS = useMemo(() => {
@@ -211,16 +213,29 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
 
   // hour/minute always stored in 24h internally; period only used when is12h
   const [form, setForm] = useState({ client_id: '', client_ids: [] as string[], employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM' as 'AM' | 'PM', status: 'pending', notes: '' })
+  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null)
+  const [clientSearch, setClientSearch] = useState('')
 
-  async function openForm(prefill?: Partial<typeof form>) {
+  async function openForm(prefill?: Partial<typeof form>, appointmentId?: string) {
     const { data } = await supabase
       .from('clients')
       .select('id, name, phone')
       .eq('business_id', businessId)
       .order('name')
       .limit(200)
-    if (data) setClientsList(data as Client[])
-    if (prefill) setForm((f) => ({ ...f, ...prefill }))
+    if (data) setClientsList(data as ClientOption[])
+    setEditingAppointmentId(appointmentId ?? null)
+    setClientSearch('')
+    setForm(appointmentId
+      ? (f) => ({ ...f, client_ids: [], ...(prefill ?? {}) })
+      : () => ({ client_id: '', client_ids: [], employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM' as const, status: 'pending', notes: '', ...(prefill ?? {}) }))
+    if (appointmentId) {
+      const { data: participants } = await supabase
+        .from('appointment_clients')
+        .select('client_id')
+        .eq('appointment_id', appointmentId)
+      setForm((f) => ({ ...f, client_ids: participants?.map((participant) => participant.client_id) ?? [] }))
+    }
     setFormError(null)
     setShowForm(true)
   }
@@ -252,11 +267,21 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
 
   const [saving, setSaving] = useState(false)
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null)
+  const [detailParticipantIds, setDetailParticipantIds] = useState<string[]>([])
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [draggedAppt, setDraggedAppt] = useState<Appointment | null>(null)
   const [assignError, setAssignError] = useState<string | null>(null)
   const [showLegend, setShowLegend] = useState(false)
   const legendRef = useRef<HTMLDivElement>(null)
+
+  async function selectAppointment(appointment: Appointment) {
+    setSelectedAppt(appointment)
+    const { data } = await supabase
+      .from('appointment_clients')
+      .select('client_id')
+      .eq('appointment_id', appointment.id)
+    setDetailParticipantIds(data?.map((participant) => participant.client_id) ?? (appointment.clients?.id ? [appointment.clients.id] : []))
+  }
 
   // day_of_week: 0=Sun, 1=Mon … 6=Sat (JS getDay() convention)
   function isDayClosed(date: Date) {
@@ -378,30 +403,39 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
 
     const selectedClientIds = form.client_ids.length > 0 ? form.client_ids : (form.client_id ? [form.client_id] : [])
     const primaryClientId = selectedClientIds[0] || null
-    const { data, error } = await supabase.from('appointments').insert({
-      business_id: businessId, client_id: primaryClientId, employee_id: form.employee_id || null,
+    const appointmentPayload = {
+      client_id: primaryClientId, employee_id: form.employee_id || null,
       service_id: form.service_id, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(),
-      notes: form.notes ? form.notes.trim() || null : null, price: service.price, status: form.status, source: 'manual',
-    }).select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)').single()
+      notes: form.notes ? form.notes.trim() || null : null, price: service.price, status: form.status,
+    }
+    const query = editingAppointmentId
+      ? supabase.from('appointments').update(appointmentPayload).eq('id', editingAppointmentId).select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)').single()
+      : supabase.from('appointments').insert({ ...appointmentPayload, business_id: businessId, source: 'manual' }).select('id, starts_at, ends_at, status, source, notes, clients(id, name), employees(id, name), services(id, name, price)').single()
+    const { data, error } = await query
 
     if (!error && data) {
+      if (editingAppointmentId) {
+        await supabase.from('appointment_clients').delete().eq('appointment_id', data.id)
+      }
       if (selectedClientIds.length > 0) {
         const { error: participantError } = await supabase.from('appointment_clients').insert(
           selectedClientIds.map((clientId) => ({ appointment_id: data.id, client_id: clientId }))
         )
         if (participantError) {
-          await supabase.from('appointments').delete().eq('id', data.id)
-          setFormError('Failed to save the appointment participants. Please try again.')
+          setFormError('No se pudieron guardar los participantes. Inténtalo de nuevo.')
           setSaving(false)
           return
         }
       }
-      setAppointments((prev) => [...prev, data as Appointment])
+      setAppointments((prev) => editingAppointmentId
+        ? prev.map((appointment) => appointment.id === data.id ? data as Appointment : appointment)
+        : [...prev, data as Appointment])
       setShowForm(false)
+      setEditingAppointmentId(null)
       setFormError(null)
       setForm({ client_id: '', client_ids: [], employee_id: '', service_id: '', date: '', hour: '', minute: '00', period: 'AM', status: 'pending', notes: '' })
       router.refresh()
-      if (form.status === 'confirmed') {
+      if (form.status === 'confirmed' && (!editingAppointmentId || data.status !== 'confirmed')) {
         triggerBookingConfirmation(data.id).catch(() => {/* non-critical */})
       }
     } else if (error) {
@@ -416,6 +450,21 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     setSaving(false)
   }
 
+  function toggleParticipant(clientId: string) {
+    setForm((current) => ({
+      ...current,
+      client_ids: current.client_ids.includes(clientId)
+        ? current.client_ids.filter((id) => id !== clientId)
+        : [...current.client_ids, clientId],
+      client_id: '',
+    }))
+  }
+
+  const selectedClients = clientsList.filter((client) => form.client_ids.includes(client.id))
+  const availableClients = clientsList.filter((client) =>
+    !form.client_ids.includes(client.id) && client.name.toLowerCase().includes(clientSearch.toLowerCase())
+  )
+
   async function updateStatus(id: string, status: string) {
     const previousStatus = appointments.find((a) => a.id === id)?.status
     await supabase.from('appointments').update({ status }).eq('id', id)
@@ -425,6 +474,22 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
     if (status === 'confirmed' && previousStatus !== 'confirmed') {
       triggerBookingConfirmation(id).catch(() => {/* non-critical */})
     }
+  }
+
+  function editAppointment(appointment: Appointment) {
+    const parts = apptTzParts(appointment.starts_at, timezone)
+    const date = `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`
+    openForm({
+      date,
+      hour: String(parts.hour).padStart(2, '0'),
+      minute: String(parts.minute).padStart(2, '0'),
+      period: parts.hour < 12 ? 'AM' : 'PM',
+      employee_id: appointment.employees?.id ?? '',
+      service_id: appointment.services?.id ?? '',
+      status: appointment.status,
+      notes: appointment.notes ?? '',
+    }, appointment.id)
+    setSelectedAppt(null)
   }
 
   async function deleteAppointment(id: string) {
@@ -597,7 +662,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                           return (
                             <DraggableAppt key={a.id} id={a.id}>
                               <div
-                                onClick={(e) => { e.stopPropagation(); setSelectedAppt(a) }}
+                                onClick={(e) => { e.stopPropagation(); selectAppointment(a) }}
                                 className="rounded px-1 py-0.5 mb-0.5 cursor-grab active:cursor-grabbing text-xs"
                                 style={{ backgroundColor: statusColor.bg, color: statusColor.text, borderLeft: `5px solid ${stripe}`, borderTop: `1px solid ${statusColor.border}`, borderRight: `1px solid ${statusColor.border}`, borderBottom: `1px solid ${statusColor.border}` }}
                               >
@@ -723,15 +788,35 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
               </div>
               <div>
                 <label className="text-xs text-gray-500 font-medium">{t('form.clientLabel')}</label>
-                <select
-                  multiple
-                  value={form.client_ids}
-                  onChange={(e) => setForm((f) => ({ ...f, client_ids: Array.from(e.target.selectedOptions, (option) => option.value), client_id: '' }))}
-                  className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">{t('walkIn')} (no client)</option>
-                  {clientsList.map((c) => <option key={c.id} value={c.id}>{c.name}{c.phone ? ` · ${c.phone}` : ''}</option>)}
-                </select>
-                <p className="mt-1 text-xs text-gray-400">Select one or more clients for this appointment.</p>
+                <div className="mt-1 rounded-lg border border-gray-200 bg-gray-50 p-2">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-700">Participantes ({selectedClients.length})</span>
+                    {selectedClients.length === 0 && <span className="text-xs text-gray-400">Sin clientes</span>}
+                  </div>
+                  <div className="space-y-1">
+                    {selectedClients.map((client) => (
+                      <button key={client.id} type="button" onClick={() => toggleParticipant(client.id)} className="flex w-full items-center justify-between rounded-md bg-violet-100 px-3 py-2 text-left text-sm text-violet-900 hover:bg-violet-200">
+                        <span>{client.name}{client.phone ? ` · ${client.phone}` : ''}</span>
+                        <span className="font-bold">×</span>
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    placeholder="Buscar cliente para añadir…"
+                    className="mt-2 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="mt-2 max-h-32 space-y-1 overflow-y-auto">
+                    {availableClients.slice(0, 30).map((client) => (
+                      <button key={client.id} type="button" onClick={() => toggleParticipant(client.id)} className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm text-gray-700 hover:bg-white hover:text-violet-700">
+                        <span>{client.name}{client.phone ? ` · ${client.phone}` : ''}</span>
+                        <span className="text-lg leading-none">+</span>
+                      </button>
+                    ))}
+                    {availableClients.length === 0 && <p className="px-3 py-2 text-xs text-gray-400">No hay clientes disponibles.</p>}
+                  </div>
+                </div>
               </div>
               {employees.length > 0 && (
                 <div>
@@ -792,6 +877,22 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                 </span>
               )}
             </div>
+            <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <div className="mb-2 text-xs font-medium uppercase text-gray-400">Participantes ({detailParticipantIds.length})</div>
+              {detailParticipantIds.length > 0 ? (
+                <div className="space-y-1">
+                  {detailParticipantIds.map((clientId) => {
+                    const client = clientsList.find((item) => item.id === clientId)
+                    return <div key={clientId} className="rounded-md bg-violet-100 px-3 py-2 text-sm text-violet-900">{client?.name ?? 'Cliente'}</div>
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">Sin clientes asociados</p>
+              )}
+            </div>
+            <Button className="w-full mb-3" onClick={() => editAppointment(selectedAppt)}>
+              Editar reserva
+            </Button>
             {employees.length > 0 && (
               <div className="mb-4">
                 <label className="text-xs text-gray-400 uppercase font-medium">{t('detail.employeeLabel')}</label>
@@ -867,7 +968,7 @@ export function BookingCalendar({ businessId, slug, timezone, appointments: init
                 Delete appointment
               </Button>
             )}
-            <Button variant="outline" className="w-full" onClick={() => { setSelectedAppt(null); setConfirmDelete(false); setAssignError(null) }}>{t('detail.close')}</Button>
+            <Button variant="outline" className="w-full" onClick={() => { setSelectedAppt(null); setConfirmDelete(false); setAssignError(null); setDetailParticipantIds([]) }}>{t('detail.close')}</Button>
           </div>
         </div>
       )}
